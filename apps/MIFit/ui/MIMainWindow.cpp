@@ -396,10 +396,6 @@ void MIMainWindow::OnFileOpenNew()
 void MIMainWindow::OnGLFormat()
 {
     GLFormatDialog dialog;
-    if (currentMIGLWidget())
-    {
-        dialog.setCurrentFormat(static_cast<QGLWidget*>(currentMIGLWidget()->viewport())->format());
-    }
     dialog.exec();
 }
 
@@ -1227,7 +1223,7 @@ void MIMainWindow::SetCursor(int id, QWidget *w)
 
 void MIMainWindow::updateNavigator()
 {
-    navigator->updateGL();
+    navigator->update();
 }
 
 void MIMainWindow::Debug(const std::string &msg)

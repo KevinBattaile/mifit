@@ -1,6 +1,7 @@
 #include <QtDeclarative/QDeclarativeEngine>
 #include <QtDeclarative/QDeclarativeContext>
 #include <QtDeclarative/QDeclarativeComponent>
+#include <QOpenGLWidget>
 
 #include <vector>
 #include <algorithm>
@@ -415,7 +416,7 @@ private:
 MIGLWidget::MIGLWidget()
     : QDeclarativeView(QUrl("qrc:/qml/root.qml"))
 {
-    setViewport(new QGLWidget);
+    setViewport(new QOpenGLWidget);
     setViewportUpdateMode(FullViewportUpdate);
     PaletteColor c = Application::instance()->GetBackgroundColor();
     QDeclarativeView::scene()->setBackgroundBrush(QColor(c.red, c.green, c.blue));
@@ -579,7 +580,7 @@ MIGLWidget::MIGLWidget()
 
     DoingRange = 0;
 
-    scene->renderer->setQGLWidget(static_cast<QGLWidget*>(viewport()));
+    scene->renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(viewport()));
 
     annotationPickingRenderable = new CMolwViewAnnotationPickingRenderable(stereoView, frustum, this);
     annotationPickingRenderable->setFontSize(12);
@@ -1085,7 +1086,7 @@ void MIGLWidget::draw(QPainter *painter)
 void MIGLWidget::OnPrint()
 {
     scene->renderer->setPickingEnabled(true);
-    QPixmap imageToPrint = static_cast<QGLWidget*>(viewport())->renderPixmap(); //TODO: could alter canvas size here
+    QPixmap imageToPrint = QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()); //TODO: could alter canvas size here
     scene->renderer->setPickingEnabled(false);
 
     QPrinter prn;
@@ -3810,7 +3811,7 @@ void MIGLWidget::clearStack()
 void MIGLWidget::OnEditCopy()
 {
     scene->renderer->setPickingEnabled(true);
-    QApplication::clipboard()->setPixmap(static_cast<QGLWidget*>(viewport())->renderPixmap());
+    QApplication::clipboard()->setPixmap(QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()));
     scene->renderer->setPickingEnabled(false);
 }
 
@@ -10997,7 +10998,7 @@ void MIGLWidget::OnExportImage()
     }
 
     scene->renderer->setPickingEnabled(true);
-    QPixmap image = static_cast<QGLWidget*>(viewport())->renderPixmap(); //TODO: could alter canvas size here
+    QPixmap image = QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()); //TODO: could alter canvas size here
     image.save(path);
     scene->renderer->setPickingEnabled(false);
 

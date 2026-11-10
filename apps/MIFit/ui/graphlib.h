@@ -3,7 +3,8 @@
 
 #include <string>
 #include <QFont>
-#include <QGLWidget>
+#include <QOpenGLWidget>
+#include <QOpenGLFunctions>
 #include <vector>
 
 
@@ -46,7 +47,7 @@ public:
     int width;
 };
 
-class GraphWindow : public QGLWidget
+class GraphWindow : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
 

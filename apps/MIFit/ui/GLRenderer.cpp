@@ -22,7 +22,7 @@
 #include "Application.h"
 #include "Displaylist.h"
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QPainter>
 
 
@@ -161,7 +161,7 @@ void GLRenderer::renderLight()
 }
 
 
-void GLRenderer::setQGLWidget(QGLWidget *qcanvas_win)
+void GLRenderer::setQOpenGLWidget(QOpenGLWidget *qcanvas_win)
 {
     this->qcanvas_win = qcanvas_win;
     labelsFont_.reset(new mi::opengl::Text(QFont("Helvetica", 12, QFont::Bold)));
@@ -176,8 +176,7 @@ void*GLRenderer::getContext()
 
 void GLRenderer::swapBuffers()
 {
-    if (qcanvas_win)
-        qcanvas_win->swapBuffers();
+    // QOpenGLWidget handles buffer swapping automatically
 }
 
 void GLRenderer::computeBounds(std::list<Molecule*> &molecules)

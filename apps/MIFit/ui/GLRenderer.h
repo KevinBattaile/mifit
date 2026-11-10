@@ -19,7 +19,7 @@ class Helix;
 class RibbonSegment;
 class RibbonSpan;
 class SecondaryStructure;
-class QGLWidget;
+class QOpenGLWidget;
 class QVector4D;
 namespace mi
 {
@@ -42,7 +42,7 @@ class GLRenderer
     std::map<GLuint, chemlib::ANGLE*> anglePickNameMap;
     bool pickingEnabled;
 
-    QGLWidget *qcanvas_win;
+    QOpenGLWidget *qcanvas_win;
 
     int width;
     int height;
@@ -152,7 +152,7 @@ public:
     GLRenderer();
     virtual ~GLRenderer();
 
-    void setQGLWidget(QGLWidget *qcanvas_win);
+    void setQOpenGLWidget(QOpenGLWidget *qcanvas_win);
 
     void setViewVector(const mi::math::Vector3<float> &viewVector);
 

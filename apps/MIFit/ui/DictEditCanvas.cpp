@@ -1,6 +1,6 @@
 #include <QDeclarativeComponent>
 #include <QDeclarativeContext>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 #include <QGraphicsItem>
 #include <QKeyEvent>
 #include <QMenuBar>
@@ -145,7 +145,7 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
       isPanning(false),
       parent(parent)
 {
-    setViewport(new QGLWidget);
+    setViewport(new QOpenGLWidget);
     setViewportUpdateMode(FullViewportUpdate);
     QDeclarativeView::scene()->setBackgroundBrush(Qt::black);
     setResizeMode(SizeRootObjectToView);
@@ -167,7 +167,7 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
     scene->frustum = frustum;
     scene->camera = camera;
     scene->renderer->setFrustum(frustum);
-    scene->renderer->setQGLWidget(static_cast<QGLWidget*>(viewport()));
+    scene->renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(viewport()));
     scene->renderer->setRenderStyle(RenderStyle::getDefaultBallAndStick());
 
     cameraMouseOrbitor = new MouseArcBallOrbitor(camera, frustum->getFocalLength());

@@ -1,4 +1,4 @@
-#include <QGLContext>
+#include <QOpenGLContext>
 
 #include <math/Vector4.h>
 #include <opengl/Axes.h>

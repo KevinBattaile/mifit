@@ -1,6 +1,6 @@
 #include <opengl/Frustum.h>
 #include <opengl/StereoView.h>
-#include <QGLWidget>
+#include <QOpenGLWidget>
 
 #include "DictEditAnnotationPickingRenderable.h"
 #include "GLRenderer.h"
@@ -17,7 +17,7 @@ DictEditAnnotationPickingRenderable::DictEditAnnotationPickingRenderable(StereoV
     renderer->setPickingEnabled(true);
     renderer->setFrustum(frustum);
     renderer->setRenderStyle(RenderStyle::getDefaultStick());
-    renderer->setQGLWidget(static_cast<QGLWidget*>(canvas->viewport()));
+    renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(canvas->viewport()));
 
     annotationRenderable = new DictEditAnnotationRenderable(renderer, displaylist);
 

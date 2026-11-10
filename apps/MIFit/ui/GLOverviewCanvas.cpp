@@ -64,7 +64,7 @@ static void findCenter(std::vector<Bond> &bonds, Vector3<float> &min, Vector3<fl
 }
 
 GLOverviewCanvas::GLOverviewCanvas(QWidget *parent)
-    : QGLWidget(parent)
+    : QOpenGLWidget(parent)
 {
 
     viewport = new Viewport();
@@ -84,14 +84,15 @@ GLOverviewCanvas::~GLOverviewCanvas()
 
 void GLOverviewCanvas::initializeGL()
 {
+    initializeOpenGLFunctions();
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0, 0.0, 0.0, 0.0);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 void GLOverviewCanvas::resizeGL(int width, int height)
 {
     viewport->set(0, 0, width, height);
+    glViewport(0, 0, width, height);
     //render();
 }
 

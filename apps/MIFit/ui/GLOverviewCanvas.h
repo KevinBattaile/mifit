@@ -19,9 +19,10 @@ namespace mi
     }
 }
 
-#include <QGLWidget>
+#include <QOpenGLWidget>
+#include <QOpenGLFunctions>
 
-class GLOverviewCanvas : public QGLWidget
+class GLOverviewCanvas : public QOpenGLWidget, protected QOpenGLFunctions
 {
 private:
 

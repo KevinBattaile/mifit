@@ -3,7 +3,11 @@
 
 #include <QtGui/QVector3D>
 #include <QtGui/QVector4D>
-#include <QtOpenGL/qgl.h>
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
+#include <GL/gl.h>
+#endif
 
 class BondRenderer
 {

@@ -6,6 +6,7 @@
 #include "GLRenderer.h"
 #include "Displaylist.h"
 #include "MIGLWidget.h"
+#include <QOpenGLWidget>
 
 using namespace mi::opengl;
 
@@ -17,7 +18,7 @@ CMolwViewAnnotationPickingRenderable::CMolwViewAnnotationPickingRenderable(Stere
     renderer->setPickingEnabled(true);
     renderer->setFrustum(frustum);
     renderer->setRenderStyle(RenderStyle::getStick());
-    renderer->setQGLWidget(static_cast<QGLWidget*>(canvas->viewport()));
+    renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(canvas->viewport()));
 
     annotationRenderable = new CMolwViewAnnotationRenderable(renderer);
 
