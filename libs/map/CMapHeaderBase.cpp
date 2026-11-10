@@ -800,7 +800,7 @@ bool MapHeaderOK(CMapHeaderBase *mh)
 {
     try
     {
-        if (mh <= 0)
+        if (mh == nullptr)
         {
             return false;
         }

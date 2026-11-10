@@ -2,7 +2,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <ctype.h> // for alanum
-#include <QtGui>
+#include <QtWidgets>
 #include <core/Version.h>
 #include <chemlib/chemlib.h>
 #include <chemlib/Residue.h>
