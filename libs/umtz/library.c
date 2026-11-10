@@ -99,7 +99,7 @@
 /*                                                                          */
 /*  Include library.h                                                       */
 #include "library.h"
-
+#include <stdlib.h>
 #include <stdlib.h>
 
 static void vaxF2ieeeF (union float_uint_uchar *, int);
@@ -432,6 +432,7 @@ int ccp4_ustenv (char *str)
   if ( (param = (char *) malloc(strlen(str) +1)) == NULL) 
     CCP4_fatal("CCP4_USTENV: Memory allocation failed");
   strcpy(param,str);
+  extern int putenv(char*);
   return (putenv (param));
   /* note the necessary lack of free() */
 #else
