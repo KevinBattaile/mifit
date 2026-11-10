@@ -87,14 +87,14 @@ CharData &TextPrivate::createCharacter(QChar c)
 
     GLuint texture = textures.last();
 
-    GLsizei width = fontMetrics.width(c);
+    GLsizei width = fontMetrics.horizontalAdvance(c);
     GLsizei height = fontMetrics.height();
 
     QPixmap pixmap(width, height);
     pixmap.fill(Qt::transparent);
     QPainter painter;
     painter.begin(&pixmap);
-    painter.setRenderHints(QPainter::HighQualityAntialiasing
+    painter.setRenderHints(QPainter::Antialiasing
                            | QPainter::TextAntialiasing);
     painter.setFont(font);
     painter.setPen(Qt::white);
