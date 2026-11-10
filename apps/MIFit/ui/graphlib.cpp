@@ -17,7 +17,7 @@
 #define TITLE_ROOM (3*fheight)
 
 GraphWindow::GraphWindow(QWidget *parent)
-    : QGLWidget(parent)
+    : QOpenGLWidget(parent)
 {
     /* initialize graph data */
     xlabel = "X";
@@ -224,6 +224,7 @@ void GraphWindow::mouseMoveEvent(QMouseEvent *evt)
 
 void GraphWindow::initializeGL()
 {
+    initializeOpenGLFunctions();
     glClearColor(1.0, 1.0, 1.0, 1.0);
 
     // line rendering with the depth test enabled produces "interesting"
@@ -250,7 +251,7 @@ void GraphWindow::resizeGL(int w, int h)
 
 void GraphWindow::redraw()
 {
-    updateGL();
+    update();
 }
 
 void GraphWindow::graph_scale(double x1, double x2, double y1, double y2)

@@ -6,8 +6,8 @@
 #include <QtCore/QSysInfo>
 #include <QtGui/QPainter>
 #include <QtGui/QPixmap>
-#include <QtOpenGL/QGLFormat>
-#include <QtOpenGL/QGLFramebufferObject>
+#include <QOpenGLContext>
+#include <QOpenGLFramebufferObject>
 
 namespace
 {
@@ -69,7 +69,7 @@ void TextPrivate::allocateTexture()
 
     QImage image(TEXTURE_SIZE, TEXTURE_SIZE, QImage::Format_ARGB32);
     image.fill(Qt::transparent);
-    image = QGLWidget::convertToGLFormat(image);
+    image = image.convertToFormat(QImage::Format_RGBA8888);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, TEXTURE_SIZE, TEXTURE_SIZE,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
@@ -87,14 +87,14 @@ CharData &TextPrivate::createCharacter(QChar c)
 
     GLuint texture = textures.last();
 
-    GLsizei width = fontMetrics.width(c);
+    GLsizei width = fontMetrics.horizontalAdvance(c);
     GLsizei height = fontMetrics.height();
 
     QPixmap pixmap(width, height);
     pixmap.fill(Qt::transparent);
     QPainter painter;
     painter.begin(&pixmap);
-    painter.setRenderHints(QPainter::HighQualityAntialiasing
+    painter.setRenderHints(QPainter::Antialiasing
                            | QPainter::TextAntialiasing);
     painter.setFont(font);
     painter.setPen(Qt::white);
@@ -103,7 +103,7 @@ CharData &TextPrivate::createCharacter(QChar c)
     painter.end();
 
 
-    QImage image = QGLWidget::convertToGLFormat(pixmap.toImage());
+    QImage image = pixmap.toImage().convertToFormat(QImage::Format_RGBA8888);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexSubImage2D(GL_TEXTURE_2D, 0, xOffset, yOffset, width, height, GL_RGBA,
                     GL_UNSIGNED_BYTE, image.bits());
@@ -156,7 +156,7 @@ void Text::renderText(float x, float y, const QString &text)
     // If the current context's device is not active for painting, the
     // texture generation does not work. This may be specific to the way
     // MIFit is setup.
-    if (!QGLContext::currentContext()->device()->paintingActive())
+    if (!QOpenGLContext::currentContext())
         return;
 
     glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_TEXTURE_BIT);
