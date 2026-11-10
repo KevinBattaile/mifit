@@ -1,0 +1,679 @@
+cmake_minimum_required(VERSION 3.16)
+project(MIFit VERSION 2010.10 LANGUAGES C CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTORCC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network Xml)
+find_package(OpenGL REQUIRED)
+
+if(MSVC)
+  add_compile_definitions(_CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_DEPRECATE)
+else()
+  add_compile_options(-Wall -Wno-unknown-pragmas)
+endif()
+
+# Common include directories
+set(MIFIT_INCLUDE_DIRS
+    ${CMAKE_CURRENT_SOURCE_DIR}/libs
+    ${CMAKE_CURRENT_SOURCE_DIR}/apps/MIFit
+)
+
+# -------------------------------------------------------------
+# Libraries (libs/)
+# -------------------------------------------------------------
+
+# miutil
+add_library(miutil STATIC
+    libs/util/FileIo.cpp
+    libs/util/FileIo.h
+    libs/util/StringIo.cpp
+    libs/util/StringIo.h
+    libs/util/io.cpp
+    libs/util/io.h
+    libs/util/system.cpp
+    libs/util/system.h
+    libs/util/util.cpp
+    libs/util/utillib.h
+)
+target_include_directories(miutil PUBLIC ${MIFIT_INCLUDE_DIRS} libs/util)
+target_link_libraries(miutil PUBLIC Qt6::Core)
+
+# mimath
+add_library(mimath STATIC
+    libs/math/APOINT.h
+    libs/math/Grid.h
+    libs/math/IndexOutOfBoundsException.cpp
+    libs/math/IndexOutOfBoundsException.h
+    libs/math/LINE.h
+    libs/math/LSQMatrix.cpp
+    libs/math/LSQMatrix.h
+    libs/math/Matrices.cpp
+    libs/math/Matrices.h
+    libs/math/Matrix3.h
+    libs/math/Matrix4.h
+    libs/math/MersenneTwister.h
+    libs/math/PLINE.h
+    libs/math/PeriodicGrid.h
+    libs/math/Point3.h
+    libs/math/Point4.h
+    libs/math/Quaternion.h
+    libs/math/Random.h
+    libs/math/Tuple.h
+    libs/math/Tuple3.h
+    libs/math/Tuple4.h
+    libs/math/Vector3.h
+    libs/math/Vector4.h
+    libs/math/crystmat.cpp
+    libs/math/crystmat.h
+    libs/math/mathlib.h
+    libs/math/mi_math.cpp
+    libs/math/mi_math.h
+)
+target_include_directories(mimath PUBLIC ${MIFIT_INCLUDE_DIRS} libs/math)
+target_link_libraries(mimath PUBLIC Qt6::Core)
+
+# chemlib
+add_library(chemlib STATIC
+    libs/chemlib/ANGLE.h
+    libs/chemlib/Aromatic.cpp
+    libs/chemlib/Aromatic.h
+    libs/chemlib/AtomTyper.cpp
+    libs/chemlib/AtomTyper.h
+    libs/chemlib/Bond.cpp
+    libs/chemlib/Bond.h
+    libs/chemlib/Box.cpp
+    libs/chemlib/Box.h
+    libs/chemlib/CHIRALDICT.h
+    libs/chemlib/Chiral.cpp
+    libs/chemlib/Chiral.h
+    libs/chemlib/CifData.cpp
+    libs/chemlib/CifData.h
+    libs/chemlib/CifParser.cpp
+    libs/chemlib/CifParser.h
+    libs/chemlib/ConfSaver.cpp
+    libs/chemlib/ConfSaver.h
+    libs/chemlib/Constraint.cpp
+    libs/chemlib/Constraint.h
+    libs/chemlib/CovalentGeom.cpp
+    libs/chemlib/CovalentGeom.h
+    libs/chemlib/DictResidue.cpp
+    libs/chemlib/DictResidue.h
+    libs/chemlib/Dictionary.cpp
+    libs/chemlib/Dictionary.h
+    libs/chemlib/FirstToken.cpp
+    libs/chemlib/FirstToken.h
+    libs/chemlib/GeomSaver.cpp
+    libs/chemlib/GeomSaver.h
+    libs/chemlib/Ligand.cpp
+    libs/chemlib/Ligand.h
+    libs/chemlib/LigandPerceiver.cpp
+    libs/chemlib/LigandPerceiver.h
+    libs/chemlib/MIAtom.cpp
+    libs/chemlib/MIAtom.h
+    libs/chemlib/MIAtom_fwd.h
+    libs/chemlib/MIMolDictionary.cpp
+    libs/chemlib/MIMolDictionary.h
+    libs/chemlib/MIMolIO.cpp
+    libs/chemlib/MIMolIOBase.h
+    libs/chemlib/MIMolInfo.h
+    libs/chemlib/MIMoleculeBase.cpp
+    libs/chemlib/MIMoleculeBase.h
+    libs/chemlib/MIMoleculeBase_fwd.h
+    libs/chemlib/Matrix.h
+    libs/chemlib/Monomer.cpp
+    libs/chemlib/Monomer.h
+    libs/chemlib/PDB.cpp
+    libs/chemlib/PDB.h
+    libs/chemlib/PLANE.h
+    libs/chemlib/RefmacAtomTyper.cpp
+    libs/chemlib/RefmacAtomTyper.h
+    libs/chemlib/RefmacType.h
+    libs/chemlib/Residue.cpp
+    libs/chemlib/Residue.h
+    libs/chemlib/Residue_fwd.h
+    libs/chemlib/RingSystem.cpp
+    libs/chemlib/RingSystem.h
+    libs/chemlib/SMILES.cpp
+    libs/chemlib/SMILES.h
+    libs/chemlib/SaveAtom.cpp
+    libs/chemlib/SaveAtom.h
+    libs/chemlib/SaveItem.cpp
+    libs/chemlib/SaveItem.h
+    libs/chemlib/SmilesReader.cpp
+    libs/chemlib/SmilesReader.h
+    libs/chemlib/Substituent.cpp
+    libs/chemlib/Substituent.h
+    libs/chemlib/TORSION.h
+    libs/chemlib/atom_util.cpp
+    libs/chemlib/atom_util.h
+    libs/chemlib/chemlib.h
+    libs/chemlib/math_util.h
+    libs/chemlib/mmCIF.cpp
+    libs/chemlib/mmCIF.h
+    libs/chemlib/model.h
+    libs/chemlib/mol_util.cpp
+    libs/chemlib/mol_util.h
+    libs/chemlib/mol_util_private.h
+    libs/chemlib/molfile.cpp
+    libs/chemlib/molfile.h
+    libs/chemlib/sequence_util.h
+    libs/chemlib/substituent_util.cpp
+    libs/chemlib/substituent_util.h
+    libs/chemlib/transform_util.cpp
+    libs/chemlib/transform_util.h
+    libs/chemlib/util.cpp
+    libs/chemlib/util.h
+    libs/chemlib/valence.cpp
+    libs/chemlib/valence.h
+)
+target_include_directories(chemlib PUBLIC ${MIFIT_INCLUDE_DIRS} libs/chemlib)
+target_link_libraries(chemlib PUBLIC mimath miutil Qt6::Core)
+
+# conflib
+add_library(conflib STATIC
+    libs/conflib/AtomRefiner.cpp
+    libs/conflib/AtomRefiner.h
+    libs/conflib/ConfFingerprint.cpp
+    libs/conflib/ConfFingerprint.h
+    libs/conflib/ConfIterator.cpp
+    libs/conflib/ConfIterator.h
+    libs/conflib/CoordGenerator.cpp
+    libs/conflib/CoordGenerator.h
+    libs/conflib/FlexTorsion.cpp
+    libs/conflib/FlexTorsion.h
+    libs/conflib/LigRefiner.cpp
+    libs/conflib/LigRefiner.h
+    libs/conflib/bumps.cpp
+    libs/conflib/bumps.h
+    libs/conflib/confgen.cpp
+    libs/conflib/confgen.h
+    libs/conflib/conflib.h
+    libs/conflib/sdg.cpp
+    libs/conflib/sdg.h
+    libs/conflib/sdg_parms.h
+)
+target_include_directories(conflib PUBLIC ${MIFIT_INCLUDE_DIRS} libs/conflib)
+target_link_libraries(conflib PUBLIC chemlib mimath miutil Qt6::Core)
+
+# jacgrid
+add_library(jacgrid STATIC
+    libs/jacgrid/atom.cpp
+    libs/jacgrid/atom.h
+    libs/jacgrid/cell_table.h
+    libs/jacgrid/grid.cpp
+    libs/jacgrid/grid.h
+    libs/jacgrid/isosurface.cpp
+    libs/jacgrid/jacgrid.h
+    libs/jacgrid/jacgrid_private.h
+    libs/jacgrid/linalg.h
+    libs/jacgrid/plane.cpp
+    libs/jacgrid/plane.h
+    libs/jacgrid/surface.cpp
+    libs/jacgrid/surface.h
+)
+target_include_directories(jacgrid PUBLIC ${MIFIT_INCLUDE_DIRS} libs/jacgrid)
+
+# ligand
+add_library(ligand STATIC
+    libs/ligand/LigDictEntry.cpp
+    libs/ligand/LigDictEntry.h
+    libs/ligand/LigPostProcessor.cpp
+    libs/ligand/LigPostProcessor.h
+    libs/ligand/ligandlib.h
+)
+target_include_directories(ligand PUBLIC ${MIFIT_INCLUDE_DIRS} libs/ligand)
+target_link_libraries(ligand PUBLIC chemlib conflib mimath miutil Qt6::Core)
+
+# map
+add_library(map STATIC
+    libs/map/CMapHeaderBase.cpp
+    libs/map/CMapHeaderBase.h
+    libs/map/CREFL.h
+    libs/map/EMapBase.cpp
+    libs/map/EMapBase.h
+    libs/map/InterpBox.cpp
+    libs/map/InterpBox.h
+    libs/map/MAP_POINT.h
+    libs/map/MINATOM.h
+    libs/map/MapSettingsBase.cpp
+    libs/map/MapSettingsBase.h
+    libs/map/PEAK.h
+    libs/map/factor.cpp
+    libs/map/fft.h
+    libs/map/fftlib.cpp
+    libs/map/fftsub.cpp
+    libs/map/fssubs.cpp
+    libs/map/fssubs.h
+    libs/map/maplib.h
+    libs/map/maplib_private.h
+    libs/map/maptypes.h
+    libs/map/rescalc.cpp
+    libs/map/rescalc.h
+    libs/map/sfcalc.cpp
+    libs/map/sfcalc.h
+    libs/map/sfcalc_data.h
+    libs/map/stdrefl.cpp
+    libs/map/wxWweave.cpp
+)
+target_include_directories(map PUBLIC ${MIFIT_INCLUDE_DIRS} libs/map)
+target_link_libraries(map PUBLIC mimath miutil Qt6::Core)
+
+# molopt
+add_library(molopt STATIC
+    libs/molopt/MIMolOpt.cpp
+    libs/molopt/MIMolOpt.h
+    libs/molopt/moloptlib.h
+)
+target_include_directories(molopt PUBLIC ${MIFIT_INCLUDE_DIRS} libs/molopt)
+target_link_libraries(molopt PUBLIC chemlib map mimath miutil Qt6::Core)
+
+# miopengl
+add_library(miopengl STATIC
+    libs/opengl/Arc.cpp
+    libs/opengl/Arc.h
+    libs/opengl/Axes.cpp
+    libs/opengl/Axes.h
+    libs/opengl/Axis.cpp
+    libs/opengl/Axis.h
+    libs/opengl/Camera.cpp
+    libs/opengl/Camera.h
+    libs/opengl/Circle.cpp
+    libs/opengl/Circle.h
+    libs/opengl/Frustum.cpp
+    libs/opengl/Frustum.h
+    libs/opengl/Light.cpp
+    libs/opengl/Light.h
+    libs/opengl/Object3d.cpp
+    libs/opengl/Object3d.h
+    libs/opengl/OpenGL.h
+    libs/opengl/QuatUtil.cpp
+    libs/opengl/QuatUtil.h
+    libs/opengl/RelativeViewpoint.cpp
+    libs/opengl/RelativeViewpoint.h
+    libs/opengl/Renderable.h
+    libs/opengl/Scene.h
+    libs/opengl/Sphere.cpp
+    libs/opengl/Sphere.h
+    libs/opengl/StereoView.cpp
+    libs/opengl/StereoView.h
+    libs/opengl/Text.cpp
+    libs/opengl/Text.h
+    libs/opengl/Viewpoint.cpp
+    libs/opengl/Viewpoint.h
+    libs/opengl/Viewport.cpp
+    libs/opengl/Viewport.h
+    libs/opengl/ViewportRelativeViewpoint.cpp
+    libs/opengl/ViewportRelativeViewpoint.h
+    libs/opengl/interact/ArcBallFeedback.cpp
+    libs/opengl/interact/ArcBallFeedback.h
+    libs/opengl/interact/FieldOfViewZoomCommand.cpp
+    libs/opengl/interact/FieldOfViewZoomCommand.h
+    libs/opengl/interact/MouseArcBall.cpp
+    libs/opengl/interact/MouseArcBall.h
+    libs/opengl/interact/MouseArcBallOrbitor.cpp
+    libs/opengl/interact/MouseArcBallOrbitor.h
+    libs/opengl/interact/MousePicker.cpp
+    libs/opengl/interact/MousePicker.h
+    libs/opengl/interact/MouseTranslator.cpp
+    libs/opengl/interact/MouseTranslator.h
+    libs/opengl/interact/MouseZoomer.cpp
+    libs/opengl/interact/MouseZoomer.h
+    libs/opengl/interact/PropertyCommand.h
+    libs/opengl/interact/SimpleMouseRotator.cpp
+    libs/opengl/interact/SimpleMouseRotator.h
+    libs/opengl/interact/TargetFeedback.cpp
+    libs/opengl/interact/TargetFeedback.h
+    libs/opengl/interact/TranslationFeedback.cpp
+    libs/opengl/interact/TranslationFeedback.h
+    libs/opengl/zlib/adler32.cpp
+    libs/opengl/zlib/crc32.cpp
+    libs/opengl/zlib/infblock.cpp
+    libs/opengl/zlib/infblock.h
+    libs/opengl/zlib/infcodes.cpp
+    libs/opengl/zlib/infcodes.h
+    libs/opengl/zlib/inffast.cpp
+    libs/opengl/zlib/inffast.h
+    libs/opengl/zlib/inffixed.h
+    libs/opengl/zlib/inflate.cpp
+    libs/opengl/zlib/inftrees.cpp
+    libs/opengl/zlib/inftrees.h
+    libs/opengl/zlib/infutil.cpp
+    libs/opengl/zlib/infutil.h
+    libs/opengl/zlib/zconf.h
+    libs/opengl/zlib/zlib.h
+    libs/opengl/zlib/zutil.cpp
+    libs/opengl/zlib/zutil.h
+)
+target_include_directories(miopengl PUBLIC
+    ${MIFIT_INCLUDE_DIRS}
+    libs/opengl
+    libs/opengl/interact
+    libs/opengl/zlib
+)
+target_link_libraries(miopengl PUBLIC mimath miutil OpenGL::GL OpenGL::GLU Qt6::Core Qt6::Gui Qt6::OpenGL Qt6::OpenGLWidgets)
+
+# umtz
+add_library(umtz STATIC
+    libs/umtz/library.c
+    libs/umtz/library.h
+    libs/umtz/mmtzlib.c
+    libs/umtz/mmtzlib.h
+    libs/umtz/umtzlib.c
+    libs/umtz/umtzlib.h
+)
+if(WIN32)
+  target_compile_definitions(umtz PRIVATE _MVS i386 WINVER=0x400)
+endif()
+target_include_directories(umtz PUBLIC ${MIFIT_INCLUDE_DIRS} libs/umtz)
+
+# -------------------------------------------------------------
+# Apps (apps/MIFit/)
+# -------------------------------------------------------------
+
+# core
+add_library(core STATIC
+    apps/MIFit/core/ATOMLABEL.cpp
+    apps/MIFit/core/ATOMLABEL.h
+    apps/MIFit/core/Annotation.cpp
+    apps/MIFit/core/Annotation.h
+    apps/MIFit/core/CHIRALDICT.h
+    apps/MIFit/core/CONTACT.h
+    apps/MIFit/core/Cfiles.cpp
+    apps/MIFit/core/Cfiles.h
+    apps/MIFit/core/ColorUtil.cpp
+    apps/MIFit/core/ColorUtil.h
+    apps/MIFit/core/Colors.cpp
+    apps/MIFit/core/Colors.h
+    apps/MIFit/core/GeomRefiner.cpp
+    apps/MIFit/core/GeomRefiner.h
+    apps/MIFit/core/Helix.cpp
+    apps/MIFit/core/Helix.h
+    apps/MIFit/core/Matvec.cpp
+    apps/MIFit/core/Mlculseq.cpp
+    apps/MIFit/core/Molecule.cpp
+    apps/MIFit/core/Molecule.h
+    apps/MIFit/core/MoleculeType.h
+    apps/MIFit/core/Pdbsubs.cpp
+    apps/MIFit/core/RESIDUE.cpp
+    apps/MIFit/core/RESIDUE.h
+    apps/MIFit/core/RenderStyle.cpp
+    apps/MIFit/core/RenderStyle.h
+    apps/MIFit/core/RibbonSegment.cpp
+    apps/MIFit/core/RibbonSegment.h
+    apps/MIFit/core/RibbonSpan.cpp
+    apps/MIFit/core/RibbonSpan.h
+    apps/MIFit/core/SURFDOT.cpp
+    apps/MIFit/core/SURFDOT.h
+    apps/MIFit/core/SecondaryStructure.cpp
+    apps/MIFit/core/SecondaryStructure.h
+    apps/MIFit/core/Stack.cpp
+    apps/MIFit/core/Stack.h
+    apps/MIFit/core/SurfaceSphere.cpp
+    apps/MIFit/core/SurfaceSphere.h
+    apps/MIFit/core/Version.cpp
+    apps/MIFit/core/Version.h
+    apps/MIFit/core/ViewPoint.cpp
+    apps/MIFit/core/ViewPoint.h
+    apps/MIFit/core/ViewPointIO.cpp
+    apps/MIFit/core/ViewPointIO.h
+    apps/MIFit/core/clusterList.cpp
+    apps/MIFit/core/clusterList.h
+    apps/MIFit/core/corelib.h
+    apps/MIFit/core/eigen.cpp
+    apps/MIFit/core/mifit_algorithm.h
+    apps/MIFit/core/pdbmatch.cpp
+    apps/MIFit/core/rotate.cpp
+    apps/MIFit/core/rotlsq.cpp
+    apps/MIFit/core/rotlsq.h
+    apps/MIFit/core/seqtypes.h
+    apps/MIFit/core/xmlarchive.cpp
+    apps/MIFit/core/xmlarchive.h
+)
+target_include_directories(core PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/core)
+target_link_libraries(core PUBLIC
+    chemlib conflib jacgrid ligand map mimath miopengl miutil molopt umtz
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+)
+
+# jobs
+add_library(jobs STATIC
+    apps/MIFit/jobs/BatchJob.cpp
+    apps/MIFit/jobs/BatchJob.h
+    apps/MIFit/jobs/BatchJobManager.cpp
+    apps/MIFit/jobs/BatchJobManager.h
+    apps/MIFit/jobs/OpenJobResults.cpp
+    apps/MIFit/jobs/OpenJobResults.h
+    apps/MIFit/jobs/jobslib.h
+)
+target_include_directories(jobs PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/jobs)
+target_link_libraries(jobs PUBLIC core Qt6::Core Qt6::Widgets Qt6::Network)
+
+# script
+add_library(script STATIC
+    apps/MIFit/script/LocalSocketScript.cpp
+    apps/MIFit/script/LocalSocketScript.h
+    apps/MIFit/script/MIFitScriptObject.cpp
+    apps/MIFit/script/MIFitScriptObject.h
+)
+target_include_directories(script PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/script)
+target_link_libraries(script PUBLIC core Qt6::Core Qt6::Network)
+
+# ui
+add_library(ui STATIC
+    apps/MIFit/ui/AddResidueDialog.cpp
+    apps/MIFit/ui/AddResidueDialog.h
+    apps/MIFit/ui/AddResidueDialog.ui
+    apps/MIFit/ui/Application.cpp
+    apps/MIFit/ui/Application.h
+    apps/MIFit/ui/AtomColors.cpp
+    apps/MIFit/ui/AtomColors.h
+    apps/MIFit/ui/AtomColors.ui
+    apps/MIFit/ui/BValueColors.cpp
+    apps/MIFit/ui/BValueColors.h
+    apps/MIFit/ui/BValueColors.ui
+    apps/MIFit/ui/BondRenderer.cpp
+    apps/MIFit/ui/BondRenderer.h
+    apps/MIFit/ui/CMapHeader.cpp
+    apps/MIFit/ui/CMapHeader.h
+    apps/MIFit/ui/CMolwViewAnnotationPickingRenderable.cpp
+    apps/MIFit/ui/CMolwViewAnnotationPickingRenderable.h
+    apps/MIFit/ui/CMolwViewAtomPickingRenderable.cpp
+    apps/MIFit/ui/CMolwViewAtomPickingRenderable.h
+    apps/MIFit/ui/CMolwViewBondPickingRenderable.cpp
+    apps/MIFit/ui/CMolwViewBondPickingRenderable.h
+    apps/MIFit/ui/CMolwViewScene.cpp
+    apps/MIFit/ui/CMolwViewScene.h
+    apps/MIFit/ui/CMolwViewSlabPickingRenderable.cpp
+    apps/MIFit/ui/CMolwViewSlabPickingRenderable.h
+    apps/MIFit/ui/ContourOptionsWidget.cpp
+    apps/MIFit/ui/ContourOptionsWidget.h
+    apps/MIFit/ui/ContourOptionsWidget.ui
+    apps/MIFit/ui/CurrentMIGLWidgetAction.cpp
+    apps/MIFit/ui/CurrentMIGLWidgetAction.h
+    apps/MIFit/ui/CursorArea.cpp
+    apps/MIFit/ui/CursorArea.h
+    apps/MIFit/ui/CustomJobDialog.cpp
+    apps/MIFit/ui/CustomJobDialog.h
+    apps/MIFit/ui/CustomJobDialog.ui
+    apps/MIFit/ui/CustomJobPreferences.cpp
+    apps/MIFit/ui/CustomJobPreferences.h
+    apps/MIFit/ui/CustomJobPreferences.ui
+    apps/MIFit/ui/DictEditAnglePickingRenderable.cpp
+    apps/MIFit/ui/DictEditAnglePickingRenderable.h
+    apps/MIFit/ui/DictEditAnnotationPickingRenderable.cpp
+    apps/MIFit/ui/DictEditAnnotationPickingRenderable.h
+    apps/MIFit/ui/DictEditAtomPickingRenderable.cpp
+    apps/MIFit/ui/DictEditAtomPickingRenderable.h
+    apps/MIFit/ui/DictEditBondPickingRenderable.cpp
+    apps/MIFit/ui/DictEditBondPickingRenderable.h
+    apps/MIFit/ui/DictEditCanvas.cpp
+    apps/MIFit/ui/DictEditCanvas.h
+    apps/MIFit/ui/DictEditDialog.cpp
+    apps/MIFit/ui/DictEditDialog.h
+    apps/MIFit/ui/DictEditScene.cpp
+    apps/MIFit/ui/DictEditScene.h
+    apps/MIFit/ui/DisplayView.cpp
+    apps/MIFit/ui/DisplayView.h
+    apps/MIFit/ui/Displaylist.cpp
+    apps/MIFit/ui/Displaylist.h
+    apps/MIFit/ui/EMap.cpp
+    apps/MIFit/ui/EMap.h
+    apps/MIFit/ui/EnvironmentPreferences.cpp
+    apps/MIFit/ui/EnvironmentPreferences.h
+    apps/MIFit/ui/EnvironmentPreferences.ui
+    apps/MIFit/ui/GLFormatDialog.cpp
+    apps/MIFit/ui/GLFormatDialog.h
+    apps/MIFit/ui/GLFormatDialog.ui
+    apps/MIFit/ui/GLFormatEdit.cpp
+    apps/MIFit/ui/GLFormatEdit.h
+    apps/MIFit/ui/GLFormatEdit.ui
+    apps/MIFit/ui/GLOverviewCanvas.cpp
+    apps/MIFit/ui/GLOverviewCanvas.h
+    apps/MIFit/ui/GLRenderer.cpp
+    apps/MIFit/ui/GLRenderer.h
+    apps/MIFit/ui/GeneralPreferences.cpp
+    apps/MIFit/ui/GeneralPreferences.h
+    apps/MIFit/ui/GeneralPreferences.ui
+    apps/MIFit/ui/GenericDataDialog.cpp
+    apps/MIFit/ui/GenericDataDialog.h
+    apps/MIFit/ui/JobsView.cpp
+    apps/MIFit/ui/JobsView.h
+    apps/MIFit/ui/LSQFitDialog.cpp
+    apps/MIFit/ui/LSQFitDialog.h
+    apps/MIFit/ui/LSQFitDialog.ui
+    apps/MIFit/ui/Logger.cpp
+    apps/MIFit/ui/Logger.h
+    apps/MIFit/ui/MIBrowsePair.cpp
+    apps/MIFit/ui/MIBrowsePair.h
+    apps/MIFit/ui/MIColorPickerDlg.cpp
+    apps/MIFit/ui/MIColorPickerDlg.h
+    apps/MIFit/ui/MIDialog.cpp
+    apps/MIFit/ui/MIDialog.h
+    apps/MIFit/ui/MIGLWidget.cpp
+    apps/MIFit/ui/MIGLWidget.h
+    apps/MIFit/ui/MIMainWindow.cpp
+    apps/MIFit/ui/MIMainWindow.h
+    apps/MIFit/ui/MIMolIO.cpp
+    apps/MIFit/ui/MIMolIO.h
+    apps/MIFit/ui/MIQDialog.cpp
+    apps/MIFit/ui/MIQDialog.h
+    apps/MIFit/ui/MIQTreeWidget.cpp
+    apps/MIFit/ui/MIQTreeWidget.h
+    apps/MIFit/ui/ManageCrystals.cpp
+    apps/MIFit/ui/ManageCrystals.h
+    apps/MIFit/ui/ManageCrystals.ui
+    apps/MIFit/ui/MapSettings.cpp
+    apps/MIFit/ui/MapSettings.h
+    apps/MIFit/ui/ModelsView.cpp
+    apps/MIFit/ui/ModelsView.h
+    apps/MIFit/ui/MoleculeXmlHandler.cpp
+    apps/MIFit/ui/MoleculeXmlHandler.h
+    apps/MIFit/ui/PhaseFileLoadDialog.cpp
+    apps/MIFit/ui/PhaseFileLoadDialog.h
+    apps/MIFit/ui/PhaseFileLoadDialog.ui
+    apps/MIFit/ui/PreferencesDialog.cpp
+    apps/MIFit/ui/PreferencesDialog.h
+    apps/MIFit/ui/PreferencesDialog.ui
+    apps/MIFit/ui/RamaPlot.cpp
+    apps/MIFit/ui/RamaPlot.h
+    apps/MIFit/ui/RefinementOptionsDialog.cpp
+    apps/MIFit/ui/RefinementOptionsDialog.h
+    apps/MIFit/ui/RefinementOptionsDialog.ui
+    apps/MIFit/ui/SaveModel.h
+    apps/MIFit/ui/SelectCrystal.cpp
+    apps/MIFit/ui/SelectCrystal.h
+    apps/MIFit/ui/SelectCrystal.ui
+    apps/MIFit/ui/SmilesDialog.cpp
+    apps/MIFit/ui/SmilesDialog.h
+    apps/MIFit/ui/SmilesDialog.ui
+    apps/MIFit/ui/TreeData.cpp
+    apps/MIFit/ui/TreeData.h
+    apps/MIFit/ui/ViewPointSettings.cpp
+    apps/MIFit/ui/ViewPointSettings.h
+    apps/MIFit/ui/ViewSyncedPanel.cpp
+    apps/MIFit/ui/ViewSyncedPanel.h
+    apps/MIFit/ui/WaitCursor.cpp
+    apps/MIFit/ui/WaitCursor.h
+    apps/MIFit/ui/Xguicryst.h
+    apps/MIFit/ui/asplib.cpp
+    apps/MIFit/ui/asplib.h
+    apps/MIFit/ui/dicteditorform.ui
+    apps/MIFit/ui/graphlib.cpp
+    apps/MIFit/ui/graphlib.h
+    apps/MIFit/ui/id.h
+    apps/MIFit/ui/molw.h
+    apps/MIFit/ui/rama.h
+    apps/MIFit/ui/surf.cpp
+    apps/MIFit/ui/surf.h
+    apps/MIFit/ui/tools.cpp
+    apps/MIFit/ui/tools.h
+    apps/MIFit/ui/ui.qrc
+    apps/MIFit/ui/uilib.h
+)
+target_include_directories(ui PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/ui)
+target_link_libraries(ui PUBLIC
+    core jobs script
+    OpenGL::GL OpenGL::GLU
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Network Qt6::Xml
+)
+
+# -------------------------------------------------------------
+# Main Executable: MIFit
+# -------------------------------------------------------------
+
+set(MIFIT_SOURCES
+    apps/MIFit/main/main.cpp
+)
+
+if(WIN32)
+  list(APPEND MIFIT_SOURCES apps/MIFit/main/mifit.rc)
+endif()
+
+add_executable(MIFit ${MIFIT_SOURCES})
+target_include_directories(MIFit PRIVATE
+    ${MIFIT_INCLUDE_DIRS}
+    apps/MIFit/main
+)
+
+target_link_libraries(MIFit PRIVATE
+    ui
+    jobs
+    script
+    core
+    ligand
+    map
+    molopt
+    conflib
+    chemlib
+    miopengl
+    mimath
+    miutil
+    jacgrid
+    umtz
+    OpenGL::GL
+    OpenGL::GLU
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::OpenGL
+    Qt6::OpenGLWidgets
+    Qt6::Network
+    Qt6::Xml
+)
+
+if(UNIX AND NOT APPLE)
+  set_target_properties(MIFit PROPERTIES
+      INSTALL_RPATH "$ORIGIN;$ORIGIN/lib;$ORIGIN/libs"
+  )
+endif()
+
+# Installation rules
+install(TARGETS MIFit DESTINATION bin)
+install(DIRECTORY data/ DESTINATION share/MIFit/data)
+install(DIRECTORY examples/ DESTINATION share/MIFit/examples)
+install(FILES README.txt license.txt DESTINATION share/MIFit)
