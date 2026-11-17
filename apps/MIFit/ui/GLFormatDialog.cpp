@@ -1,6 +1,6 @@
 #include "GLFormatDialog.h"
 #include "ui_GLFormatDialog.h"
-#include <QGLFormat>
+#include "QGLFormat.h"
 #include <QFlags>
 #include "GLFormatEdit.h"
 
@@ -66,7 +66,7 @@ QString toTable(const QList<StringPair> &data)
 QString formatToString(const QGLFormat &format, const QString &formatName)
 {
     QList<StringPair> data;
-    data += qMakePair<QString, QString>("Format", formatName);
+    data += std::make_pair(QString("Format"), formatName);
     data += qMakePair<QString, QString>("Double buffer", format.doubleBuffer() ? "true" : "false");
     data += qMakePair<QString, QString>("Direct render", format.directRendering() ? "true" : "false");
     QStringList rgbSize;

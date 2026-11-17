@@ -15,7 +15,7 @@
 #include <QMenu>
 #include <QMessageBox>
 #include <QSettings>
-#include <QScriptEngine>
+#include <QJSEngine>
 #include <script/MIFitScriptObject.h>
 #include <util/utillib.h>
 #include <vector>
@@ -112,7 +112,7 @@ void Tools::OnCustom()
             if (model)
             {
                 QString modelFile = dir.absoluteFilePath(QString("mifit_%1.pdb").arg(job->jobId()));
-                model->SavePDBFile(modelFile.toAscii().constData());
+                model->SavePDBFile(modelFile.toLatin1().constData());
                 subs["MODEL"] = modelFile;
             }
         }

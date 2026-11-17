@@ -8,7 +8,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
 set(CMAKE_AUTORCC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network Xml)
+find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network Core5Compat QuickWidgets PrintSupport)
 find_package(OpenGL REQUIRED)
 
 if(MSVC)
@@ -41,7 +41,7 @@ add_library(miutil STATIC
     libs/util/utillib.h
 )
 target_include_directories(miutil PUBLIC ${MIFIT_INCLUDE_DIRS} libs/util)
-target_link_libraries(miutil PUBLIC Qt6::Core)
+target_link_libraries(miutil PUBLIC Qt6::Core Qt6::Core5Compat)
 
 # mimath
 add_library(mimath STATIC
@@ -437,7 +437,7 @@ add_library(core STATIC
 target_include_directories(core PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/core)
 target_link_libraries(core PUBLIC
     chemlib conflib jacgrid ligand map mimath miopengl miutil molopt umtz
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Xml
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Core5Compat
 )
 
 # jobs
@@ -451,17 +451,17 @@ add_library(jobs STATIC
     apps/MIFit/jobs/jobslib.h
 )
 target_include_directories(jobs PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/jobs)
-target_link_libraries(jobs PUBLIC core Qt6::Core Qt6::Widgets Qt6::Network)
+target_link_libraries(jobs PUBLIC core Qt6::Core Qt6::Widgets Qt6::Network Qt6::Core5Compat Qt6::QuickWidgets)
 
 # script
-add_library(script STATIC
-    apps/MIFit/script/LocalSocketScript.cpp
-    apps/MIFit/script/LocalSocketScript.h
-    apps/MIFit/script/MIFitScriptObject.cpp
-    apps/MIFit/script/MIFitScriptObject.h
-)
-target_include_directories(script PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/script)
-target_link_libraries(script PUBLIC core Qt6::Core Qt6::Network)
+#add_library(script STATIC
+#    apps/MIFit/script/LocalSocketScript.cpp
+#    apps/MIFit/script/LocalSocketScript.h
+#    apps/MIFit/script/MIFitScriptObject.cpp
+#    apps/MIFit/script/MIFitScriptObject.h
+#)
+#target_include_directories(script PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/script)
+#target_link_libraries(script PUBLIC core Qt6::Core Qt6::Network)
 
 # ui
 add_library(ui STATIC
@@ -617,9 +617,10 @@ add_library(ui STATIC
 )
 target_include_directories(ui PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/ui)
 target_link_libraries(ui PUBLIC
-    core jobs script
+	#    core jobs script
+    core jobs 
     OpenGL::GL OpenGL::GLU
-    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Network Qt6::Xml
+    Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Network Qt6::Core5Compat Qt6::PrintSupport
 )
 
 # -------------------------------------------------------------
@@ -643,7 +644,7 @@ target_include_directories(MIFit PRIVATE
 target_link_libraries(MIFit PRIVATE
     ui
     jobs
-    script
+    #    script
     core
     ligand
     map
@@ -663,7 +664,8 @@ target_link_libraries(MIFit PRIVATE
     Qt6::OpenGL
     Qt6::OpenGLWidgets
     Qt6::Network
-    Qt6::Xml
+    Qt6::Core5Compat
+    Qt6::PrintSupport
 )
 
 if(UNIX AND NOT APPLE)

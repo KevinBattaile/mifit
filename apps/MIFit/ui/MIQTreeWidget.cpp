@@ -54,7 +54,7 @@ void MIQTreeWidget::itemInit(QTreeWidgetItem *item, const std::string &name, int
     item->setText(0, name.c_str());
 
     QVariant v;
-    v.setValue<TreeData*>(data);
+    v = QVariant::fromValue(data);
     item->setData(0, Qt::UserRole, v);
     if (data)
         data->SetId(item);

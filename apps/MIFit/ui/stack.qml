@@ -1,4 +1,4 @@
-import Qt 4.7
+import QtQuick
 import MIFit 1.0
 
 Item {
@@ -18,10 +18,10 @@ Item {
     }
 
     width: list.width + 20
-    anchors.left: root.left
-    anchors.leftMargin: 5
-    anchors.bottom: root.bottom
-    anchors.bottomMargin: 5
+    // anchors.left: parent.left
+    // anchors.leftMargin: 5
+    // anchors.bottom: parent.bottom
+    // anchors.bottomMargin: 5
     height: (list.height + 7) + stackHeader.height
     opacity: 0
     clip:  true

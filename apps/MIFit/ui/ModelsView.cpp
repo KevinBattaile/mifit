@@ -526,7 +526,7 @@ void AtomsTree::EditItem()
     QString str = QInputDialog::getText(this, "Edit atom", "Edit B-Value and occupancy", QLineEdit::Normal, s.c_str());
     if (!str.isEmpty())
     {
-        sscanf(str.toAscii().constData(), "%f%f", &bvalue, &occ);
+        sscanf(str.toLatin1().constData(), "%f%f", &bvalue, &occ);
     }
     else
     {
@@ -1186,7 +1186,7 @@ void ResiduesTree::EditItemAtoms()
     QString str = QInputDialog::getText(this, "Edit atom", "Edit B-Value and occupancy", QLineEdit::Normal, s.c_str());
     if (!str.isEmpty())
     {
-        sscanf(str.toAscii().constData(), "%f%f", &bvalue, &occ);
+        sscanf(str.toLatin1().constData(), "%f%f", &bvalue, &occ);
     }
     else
     {
@@ -2193,7 +2193,7 @@ void ModelsTree::EditItem()
             QString s = QInputDialog::getText(this, "Chain ID", "Enter Chain ID (single char)", QLineEdit::Normal, QString(chainid));
             if (!s.isEmpty())
             {
-                unsigned char c = s.toAscii().at(0);
+                unsigned char c = s.toLatin1().at(0);
                 model->setChainId(chain, c);
                 chainsModified.insert(model);
             }
@@ -2338,7 +2338,7 @@ void ModelsTree::InsertItem()
             {
                 return;
             }
-            unsigned char c = chainId.toAscii().at(0);
+            unsigned char c = chainId.toLatin1().at(0);
             Residue *buffer = Application::instance()->GetResidueBuffer();
             model->InsertResidues(model->residuesBegin(), buffer, 3, (c&255) + 1*256);
             model->Build();
@@ -2446,7 +2446,7 @@ void ModelsTree::ModelExport()
                                                   "PDB file (*.pdb);;All files (*.*)");
             if (!s.isEmpty())
             {
-                model->SavePDBFile(s.toAscii().constData());
+                model->SavePDBFile(s.toLatin1().constData());
             }
         }
     }
@@ -2921,11 +2921,11 @@ std::string ModelsTree::truncateLeft(const std::string &name, int shorter)
     size_t width = truncateWidth - shorter;
     std::string prefix("...");
     std::string result = name;
-    size_t stringWidth = fm.width(result.c_str());
+    size_t stringWidth = fm.horizontalAdvance(result.c_str());
     for (size_t i = 1; stringWidth > width && i < name.size(); ++i)
     {
         result = prefix + &name[i];
-        stringWidth = fm.width(result.c_str());
+        stringWidth = fm.horizontalAdvance(result.c_str());
     }
 
     return result;
@@ -2941,12 +2941,12 @@ std::string ModelsTree::truncateRight(const std::string &name, int shorter)
     std::string suffix("...");
     std::string shorterName(name);
     std::string result(name);
-    size_t stringWidth = fm.width(result.c_str());
+    size_t stringWidth = fm.horizontalAdvance(result.c_str());
     for (size_t i = 1; stringWidth > width && i < name.size(); ++i)
     {
         shorterName.resize(name.size() - i);
         result = shorterName + suffix;
-        stringWidth = fm.width(result.c_str());
+        stringWidth = fm.horizontalAdvance(result.c_str());
     }
 
     return result;
@@ -3443,7 +3443,7 @@ public:
     void enterEvent(QEvent *evt)
     {
         setFocus(Qt::MouseFocusReason);
-        QLineEdit::enterEvent(evt);
+        QLineEdit::enterEvent(static_cast<QEnterEvent*>(evt));
     }
 
 };

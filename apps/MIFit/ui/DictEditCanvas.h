@@ -3,7 +3,8 @@
 
 #include <map>
 #include <chemlib/chemlib.h>
-#include <QDeclarativeView>
+#include <QtQuickWidgets/QQuickWidget>
+#include <QGraphicsSceneWheelEvent>
 #include "core/corelib.h"
 
 class DictEditAnglePickingRenderable;
@@ -15,7 +16,7 @@ class Displaylist;
 class GeomRefiner;
 class DictEditMainItem;
 class QDeclarativeEngine;
-class QGraphicsObject;
+class QQuickItem;
 class QGraphicsSceneMouseEvent;
 class QKeyEvent;
 class QMenu;
@@ -51,12 +52,15 @@ namespace Ui
  * Canvas for editing a dictionary entry.
  */
 class DictEditDialog;
-class DictEditCanvas : public QDeclarativeView
+class DictEditCanvas : public QQuickWidget
 {
     Q_OBJECT
+public:
+    QWidget* viewport() const { return const_cast<DictEditCanvas*>(this); }
+private:
 
     DictEditMainItem *mainItem;
-    QGraphicsObject *stackItem;
+    QQuickItem *stackItem;
 
     mi::opengl::StereoView *stereoView;
     mi::opengl::Camera *camera;

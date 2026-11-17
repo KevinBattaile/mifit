@@ -587,7 +587,7 @@ void GLRenderer::drawText(const char *text, float x, float y, float z, float off
     {
         glPushAttrib(GL_CURRENT_BIT);
         QString numberString = QString(" %1 ").arg(number);
-        float numberWidth = labelsFont_->fontMetrics().width(numberString);
+        float numberWidth = labelsFont_->fontMetrics().horizontalAdvance(numberString);
         glColor3f(1.0f, 1.0f, 0.0f);
         float x1 = 0.0f;
         float y1 = -labelsFont_->fontMetrics().descent();

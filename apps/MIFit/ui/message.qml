@@ -1,13 +1,13 @@
-import Qt 4.7
+import QtQuick
 
 Item {
     id: messageArea
     width: text.width + 10
     height: text.height + 5
-    x: Math.ceil((root.width - width)/2.0)
-    anchors.leftMargin: 5
-    anchors.bottom: root.bottom
-    anchors.bottomMargin: 10
+    // x: Math.ceil((parent.width - width)/2.0)
+    // anchors.leftMargin: 5
+    // anchors.bottom: parent.bottom
+    // anchors.bottomMargin: 10
 
     Text {
         id: text

@@ -31,7 +31,7 @@ void sortFileNameByTime(QStringList &names)
         QDateTime time = fn.lastModified();
         fileTimes += qMakePair(name, time);
     }
-    qSort(fileTimes.begin(), fileTimes.end(), later);
+    std::sort(fileTimes.begin(), fileTimes.end(), later);
 
     names.clear();
     foreach (const FileTime &fileTime, fileTimes)

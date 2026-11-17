@@ -28,7 +28,7 @@
 #include <QProcess>
 #include <QProgressDialog>
 #include <QSettings>
-#include <QtDeclarative>
+#include <QtQuick>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -746,7 +746,7 @@ void Application::saveDict()
                                           fi.filePath(), "Dictionary files (*.pdb);;All files (*.*)");
     if (!s.isEmpty())
     {
-        if (MIFitDictionary()->SaveDictionary(s.toAscii().constData()) )
+        if (MIFitDictionary()->SaveDictionary(s.toLatin1().constData()) )
         {
             if (s.toStdString() != Application::instance()->XFitDictSetting)
             {
@@ -1131,6 +1131,10 @@ MIBusyManager::MIBusyManager()
     m_busy = 0;
     MustAbortNow = 0;
     PROGRESS = new QProgressDialog("MIFit is busy", "Abort", 0, QPROGRESS_MAX);
+    PROGRESS->setAutoReset(false);
+    PROGRESS->setAutoClose(false);
+    PROGRESS->reset();
+    PROGRESS->hide();
     PROGRESS->setWindowModality(Qt::ApplicationModal);
 }
 
@@ -1170,6 +1174,7 @@ void MIBusyManager::SetBusy(bool busy)
     if (m_busy == 0)
     {
         PROGRESS->reset();
+        PROGRESS->hide();
         PROGRESS->setLabelText("MIFit is busy");
     }
 }

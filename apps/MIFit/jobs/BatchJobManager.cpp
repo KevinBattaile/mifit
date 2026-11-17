@@ -47,7 +47,7 @@ namespace
             if (testPyQt(exePath))
                 return exePath;
         }
-        return QString::null;
+        return QString();
     }
 
     QString findPyQt()
@@ -67,7 +67,7 @@ namespace
             if (!exePath.isEmpty())
                 return exePath;
         }
-        return QString::null;
+        return QString();
     }
 
 } // anonymous namespace
@@ -161,7 +161,6 @@ Q_DECLARE_METATYPE(CustomJob);
 BatchJobManager::BatchJobManager()
 {
     qRegisterMetaType<CustomJob>("CustomJob");
-    qRegisterMetaTypeStreamOperators<CustomJob>("CustomJob");
 }
 
 BatchJobManager::~BatchJobManager()

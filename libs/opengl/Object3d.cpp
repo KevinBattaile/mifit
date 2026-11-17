@@ -27,7 +27,7 @@ Object3d::Object3d(istream &input, bool center)
     {
         centerObject();
     }
-    createList();
+    // createList();
     numpolys = faces.size();
     cleanup();
 }
@@ -44,7 +44,7 @@ void Object3d::cleanup()
 
 void stringSplit(string str, string delim, vector<string> &results)
 {
-    unsigned int cutAt;
+    size_t cutAt;
     while ( (cutAt = str.find_first_of(delim)) != str.npos)
     {
         if (cutAt > 0)
@@ -258,8 +258,16 @@ int Object3d::numpolygons()
 
 void Object3d::createList()
 {
+    if (this->objectlist != 0) {
+        return;
+    }
 
     this->objectlist = glGenLists(1);
+    
+    if (this->objectlist == 0) {
+        std::cerr << "[MI-FIT ERROR] Failed to generate OpenGL Display List! No active context?\n";
+        return;
+    }
 
     glNewList(objectlist, GL_COMPILE);
     for (unsigned int i = 0; i < faces.size(); i++)
@@ -317,7 +325,12 @@ void Object3d::createList()
 
 void Object3d::render()
 {
-    glCallList(objectlist);
+    if (objectlist == 0) {
+        createList();
+    }
+    if (objectlist != 0) {
+	glCallList(objectlist);
+    }
 }
 
 vector<string>&Object3d::getGroups(int index)

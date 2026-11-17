@@ -1,7 +1,10 @@
-#include <QDeclarativeComponent>
-#include <QDeclarativeContext>
+#include <QPainter>
+#include <QElapsedTimer>
+#include <QElapsedTimer>
+#include <QQmlComponent>
+#include <QQmlContext>
 #include <QOpenGLWidget>
-#include <QGraphicsItem>
+#include <QQuickItem>
 #include <QKeyEvent>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -49,7 +52,7 @@
 #include "ui_dicteditorform.h"
 
 // for determining click vs move
-static QTime mouseDownTime;
+static QElapsedTimer mouseDownTime;
 
 using namespace chemlib;
 using namespace mi::math;
@@ -81,21 +84,18 @@ bool ordering(const Bond &e1, const Bond &e2)
 }
 
 
-class DictEditMainItem : public QGraphicsItem
+class DictEditMainItem : public QQuickItem
 {
 public:
-    DictEditMainItem(DictEditCanvas *widget, QGraphicsItem *parent = 0)
-        : QGraphicsItem(parent), glWidget(widget)
+    DictEditMainItem(DictEditCanvas *widget, QQuickItem *parent = 0)
+        : QQuickItem(parent), glWidget(widget)
     {
-        setFlag(ItemStacksBehindParent);
-        setFlag(ItemIgnoresTransformations);
-        setFlag(ItemIgnoresParentOpacity);
-        setZValue(-std::numeric_limits<qreal>::max());
+        setZ(-std::numeric_limits<qreal>::max());
     }
 
     void setSize(const QSizeF &size)
     {
-        prepareGeometryChange();
+        update();
         this->size = size;
     }
 
@@ -104,10 +104,8 @@ public:
         return QRectF(QPointF(), size);
     }
 
-    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0)
+    virtual void paint(QPainter *painter)
     {
-        Q_UNUSED(option)
-        Q_UNUSED(widget)
         glWidget->draw(painter);
     }
 
@@ -137,7 +135,7 @@ private:
 };
 
 DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
-    : QDeclarativeView(QUrl("qrc:/qml/root.qml")),
+    : QQuickWidget(QUrl("qrc:/qml/root.qml")),
       popupMenu(NULL),
       geomrefiner(NULL),
       isRotating(false),
@@ -145,9 +143,7 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
       isPanning(false),
       parent(parent)
 {
-    setViewport(new QOpenGLWidget);
-    setViewportUpdateMode(FullViewportUpdate);
-    QDeclarativeView::scene()->setBackgroundBrush(Qt::black);
+    this->setClearColor(Qt::black);
     setResizeMode(SizeRootObjectToView);
     mainItem = new DictEditMainItem(this, rootObject());
 
@@ -182,13 +178,13 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
 
     AtomStack = new Stack;
     scene->atomStack = AtomStack;
-    rootContext()->setContextProperty("root", rootObject());
+    rootContext()->setContextProperty("root", QVariant::fromValue(rootObject()));
     rootContext()->setContextProperty("stack", AtomStack);
     rootContext()->setContextProperty("stackVisible", true);
-    QDeclarativeComponent component(engine(), QUrl("qrc:/qml/stack.qml"));
-    stackItem = qobject_cast<QGraphicsObject *>(component.create());
+    QQmlComponent component(engine(), QUrl("qrc:/qml/stack.qml"));
+    stackItem = qobject_cast<QQuickItem *>(component.create());
     if (stackItem)
-        stackItem->setParentItem(rootObject());
+        stackItem->setParentItem(qobject_cast<QQuickItem*>(rootObject()));
 
     Models = new Displaylist;
     parent = parent;
@@ -719,7 +715,7 @@ void DictEditCanvas::OnTimer()
 void DictEditCanvas::handleMousePressEvent(QGraphicsSceneMouseEvent *evt)
 {
     evt->accept();
-    QPoint point = mapFromScene(evt->scenePos());
+    QPoint point = evt->scenePos().toPoint();
 
     if (evt->button() & Qt::LeftButton)
     {
@@ -737,7 +733,7 @@ void DictEditCanvas::handleMousePressEvent(QGraphicsSceneMouseEvent *evt)
         mouseTimer->start(mouseClickThreshold);
     }
 
-    if (evt->button() & Qt::MidButton)
+    if (evt->button() & Qt::MiddleButton)
     {
         mouseStart = point;
 
@@ -761,7 +757,7 @@ void DictEditCanvas::handleMousePressEvent(QGraphicsSceneMouseEvent *evt)
 void DictEditCanvas::handleMouseMoveEvent(QGraphicsSceneMouseEvent *evt)
 {
     evt->accept();
-    QPoint point = mapFromScene(evt->scenePos());
+    QPoint point = evt->scenePos().toPoint();
 
     if (isRotating || isZooming || isPanning)
     {
@@ -800,7 +796,7 @@ void DictEditCanvas::handleMouseMoveEvent(QGraphicsSceneMouseEvent *evt)
 
 void DictEditCanvas::handleMouseReleaseEvent(QGraphicsSceneMouseEvent *evt)
 {
-    QPoint point = mapFromScene(evt->scenePos());
+    QPoint point = evt->scenePos().toPoint();
     evt->accept();
 
     if (evt->button() == Qt::LeftButton)
@@ -814,7 +810,7 @@ void DictEditCanvas::handleMouseReleaseEvent(QGraphicsSceneMouseEvent *evt)
     }
 
 
-    if (evt->button() == Qt::MidButton)
+    if (evt->button() == Qt::MiddleButton)
     {
         endDragAction();
         reRender();
@@ -835,7 +831,7 @@ void DictEditCanvas::handleMouseReleaseEvent(QGraphicsSceneMouseEvent *evt)
         endDragAction();
         reRender();
 
-        if (!(evt->buttons() & (Qt::LeftButton | Qt::MidButton | Qt::RightButton)))
+        if (!(evt->buttons() & (Qt::LeftButton | Qt::MiddleButton | Qt::RightButton)))
         {
             if (mouseTimer->isActive())
             {
@@ -1005,7 +1001,7 @@ void DictEditCanvas::resizeEvent(QResizeEvent *evt)
     mainItem->setSize(evt->size());
     stereoView->setSize(evt->size().width(), evt->size().height());
     updateViewDependentSettings();
-    QDeclarativeView::resizeEvent(evt);
+    QQuickWidget::resizeEvent(evt);
 }
 
 void DictEditCanvas::updateViewDependentSettings()
@@ -1097,7 +1093,7 @@ void DictEditCanvas::on_changeNameButton_clicked()
 
         // Finalize rename
         model->residuesBegin()->setType(s.toStdString());
-        std::string t = ::format("Dictionary Editor - %s", s.toAscii().constData());
+        std::string t = ::format("Dictionary Editor - %s", s.toLatin1().constData());
         parent->setWindowTitle(t.c_str());
         ReDraw();
     }
@@ -2116,7 +2112,7 @@ void DictEditCanvas::OnChangeAtomType()
     {
         oldname++;
     }
-    newname = choice_vec.at(choice).toAscii().constData();
+    newname = choice_vec.at(choice).toLatin1().constData();
     newname += oldname;
     tatom.setName(newname.c_str());
     tatom.setAtomicnumber(choice);
@@ -2577,7 +2573,7 @@ void DictEditCanvas::OnRenameAtom()
     MIStringTrim(oldname, false);
     MIStringTrim(oldname); //Trim from both sides
     on = oldname.c_str();
-    nn = newname.toAscii().constData();
+    nn = newname.toLatin1().constData();
     while (*on != '\0' && *nn != '\0')
     {
         if (*on == *nn)
@@ -2597,7 +2593,7 @@ void DictEditCanvas::OnRenameAtom()
         }
     }
 
-    atom->setName(newname.toAscii().constData());
+    atom->setName(newname.toLatin1().constData());
     UpdateGeom();
 }
 

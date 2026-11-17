@@ -47,7 +47,7 @@ GraphWindow::GraphWindow(QWidget *parent)
 int Twidth(QFont &font, const std::string &c)
 {
     QFontMetrics fm(font);
-    return fm.width(c.c_str());
+    return fm.horizontalAdvance(c.c_str());
 }
 
 int Theight(QFont &font)
@@ -364,7 +364,7 @@ void GraphWindow::graph_curvelabel(int /* i */, const char *label, int flag, Gra
 
 static void stringSplit(std::string str, std::string delim, std::vector<std::string> &results)
 {
-    unsigned int cutAt;
+    size_t cutAt;
     while ( (cutAt = str.find_first_of(delim)) != str.npos)
     {
         if (cutAt > 0)
@@ -416,7 +416,7 @@ void GraphWindow::myRenderText(int x, int y, const QString &str, const QFont &fo
         glEnable(GL_ALPHA_TEST);
         glRasterPos2i(0, 0);
         glBitmap(0, 0, 0, 0, x, -y, NULL);
-        glListBase(fontDisplayListBase(font, listBase));
+        // glListBase(fontDisplayListBase(font, listBase));
         QByteArray cstr(str.toLatin1());
         glCallLists(cstr.size(), GL_UNSIGNED_BYTE, cstr.constData());
 
@@ -432,7 +432,7 @@ void GraphWindow::myRenderText(int x, int y, const QString &str, const QFont &fo
         return;
     }
 #endif // ifdef __linux__
-    renderText(x, y, str, font, listBase);
+    // renderText(x, y, str, font, listBase);
 }
 
 //taken from Qt 4.2.3 to avoid assertion failure with faulty glx driver(s) from xorg 6.9/7.0 on linux.
@@ -463,7 +463,7 @@ void GraphWindow::myRenderText(double x, double y, double z, const QString &str,
         glEnable(GL_BLEND);
         glAlphaFunc(GL_GREATER, 0.0);
         glEnable(GL_ALPHA_TEST);
-        glListBase(fontDisplayListBase(font, listBase));
+        // glListBase(fontDisplayListBase(font, listBase));
         QByteArray cstr(str.toLatin1());
         glCallLists(cstr.size(), GL_UNSIGNED_BYTE, cstr.constData());
 
@@ -471,7 +471,7 @@ void GraphWindow::myRenderText(double x, double y, double z, const QString &str,
         return;
     }
 #endif // ifdef __linux__
-    renderText(x, y, z, str, font, listBase);
+    // renderText(x, y, z, str, font, listBase);
 }
 
 

@@ -1,5 +1,5 @@
 #include "CursorArea.h"
-
+#include <QGraphicsItem>
 #include <QtGui/QCursor>
 
 namespace
@@ -45,19 +45,19 @@ namespace
     }
 };
 
-CursorArea::CursorArea(QDeclarativeItem *parent)
-    : QDeclarativeItem(parent)
+CursorArea::CursorArea(QQuickItem *parent)
+    : QQuickItem(parent)
 {
     initCursorShapeMaps();
 }
 
 QString CursorArea::cursor() const
 {
-    return cursorShapeStrings[QGraphicsItem::cursor().shape()];
+    return cursorShapeStrings[QQuickItem::cursor().shape()];
 }
 
 void CursorArea::setCursor(const QString &shape)
 {
     if (cursorShapeMap.contains(shape.toLower()))
-        QGraphicsItem::setCursor(cursorShapeMap[shape.toLower()]);
+        QQuickItem::setCursor(cursorShapeMap[shape.toLower()]);
 }

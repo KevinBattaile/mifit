@@ -472,7 +472,7 @@ void LSQFitDialog::on_exportButton_clicked()
     {
         LSQMatrix lsq_matrix;
         lsq_matrix.SetMatrix(r, v);
-        lsq_matrix.Save(pathname.toAscii().constData());
+        lsq_matrix.Save(pathname.toLatin1().constData());
     }
 }
 
@@ -483,7 +483,7 @@ void LSQFitDialog::on_importButton_clicked()
     if (!pathname.isEmpty())
     {
         LSQMatrix lsq_matrix;
-        lsq_matrix.Load(pathname.toAscii().constData());
+        lsq_matrix.Load(pathname.toLatin1().constData());
         lsq_matrix.GetMatrix(r, v);
         setSuccess(true);
     }

@@ -59,13 +59,13 @@ JobsTree::JobsTree(QWidget *parent)
     std::vector<QIcon> imageList;
     QIcon jobsListImage = QIcon(QPixmap(jobsList_xpm));
     imageList.push_back(jobsListImage);
-    QIcon jobImage(job_xpm);
+    QIcon jobImage{QPixmap(job_xpm)};
     imageList.push_back(jobImage);
-    QIcon jobRunningImage(jobRunning_xpm);
+    QIcon jobRunningImage{QPixmap(jobRunning_xpm)};
     imageList.push_back(jobRunningImage);
-    QIcon jobOkImage(jobOk_xpm);
+    QIcon jobOkImage{QPixmap(jobOk_xpm)};
     imageList.push_back(jobOkImage);
-    QIcon jobErrorImage(jobError_xpm);
+    QIcon jobErrorImage{QPixmap(jobError_xpm)};
     imageList.push_back(jobErrorImage);
     AssignImageList(imageList);
 

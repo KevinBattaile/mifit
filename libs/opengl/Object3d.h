@@ -22,7 +22,7 @@ namespace mi
             std::vector<std::vector<int> > facestexs;
             std::vector<std::vector<int> > facesnorms;
 
-            int objectlist;
+            int objectlist = 0;
 
             int numpolys;
 

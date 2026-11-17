@@ -2,17 +2,19 @@
 #define mifit_ui_MIGLWidget_h
 
 #include <cmath>
-#include <QDeclarativeView>
+#include <QtQuickWidgets/QQuickWidget>
 #include <QMdiSubWindow>
 #include <QTime>
 #include <QVBoxLayout>
-
+#include <QGraphicsView>
 #include <math/Quaternion.h>
 #include "core/corelib.h"
 #include <chemlib/chemlib.h>
 #include "SaveModel.h"
-
+#include <QMouseEvent>
 #include "RamaPlot.h"
+#include <QOpenGLWidget>
+#include "opengl/Camera.h"
 
 #ifdef _WIN32
 #include <time.h>
@@ -32,7 +34,7 @@ class CMolwViewScene;
 class GLRenderer;
 class QActionGroup;
 class QDeclarativeEngine;
-class QGraphicsObject;
+class QQuickItem;
 class QGraphicsSceneMouseEvent;
 class QResizeEvent;
 class InterpBox;
@@ -62,9 +64,18 @@ class MAP_POINT;
 #define sign(a) (a < 0 ? -1 : 1)
 
 
-class MIGLWidget : public QDeclarativeView
+class MIGLWidget : public QOpenGLWidget, protected QOpenGLFunctions 
 {
     Q_OBJECT
+public:
+    explicit MIGLWidget(QWidget *parent = nullptr);
+
+protected:
+    void initializeGL() override;
+    void resizeGL(int w, int h) override;
+    void paintGL() override;
+
+private:
 
     //Display list contains the list of objects owned by this document
     Displaylist *Models;
@@ -114,8 +125,8 @@ private:
     QMdiSubWindow *oldParent;
     QWidget *containerWidget;
     MainItem *mainItem;
-    QGraphicsObject *stackItem;
-    QGraphicsObject *messageItem;
+    QQuickItem *stackItem;
+    QQuickItem *messageItem;
 
     chemlib::Residue *focusres;
     bool focusresDeleted;
@@ -217,7 +228,6 @@ private:
     mi::math::Vector3<float> mapToCamera(const QPoint &point, int z = 0);
 
 public:
-    MIGLWidget();
     virtual ~MIGLWidget();
 
     void SetFilename(const std::string &fname)
@@ -713,19 +723,19 @@ public:
 
     void handleKey_space(bool spaceKeyDown);
 
-    using QGraphicsView::mousePressEvent;
-    using QGraphicsView::mouseMoveEvent;
-    using QGraphicsView::mouseReleaseEvent;
-    using QGraphicsView::mouseDoubleClickEvent;
-    void handleMousePress(QGraphicsSceneMouseEvent *e);
-    void handleMouseRelease(QGraphicsSceneMouseEvent *e);
-    void handleMouseMove(QGraphicsSceneMouseEvent *e);
-    void handleMouseDoubleClick(QGraphicsSceneMouseEvent *e);
-    void keyPressEvent(QKeyEvent *e);
-    void enterEvent(QEvent *e);
-    void leaveEvent(QEvent *e);
+    void mousePressEvent(QMouseEvent *e) override;
+    void mouseReleaseEvent(QMouseEvent *e) override;
+    void mouseMoveEvent(QMouseEvent *e) override;
+    void mouseDoubleClickEvent(QMouseEvent *e) override;
+    void handleMousePress(QMouseEvent *e);
+    void handleMouseRelease(QMouseEvent *e);
+    void handleMouseMove(QMouseEvent *e);
+    void handleMouseDoubleClick(QMouseEvent *e);
+    void keyPressEvent(QKeyEvent *e) override;
+    void enterEvent(QEnterEvent *e) override;
+    void leaveEvent(QEvent *e) override;
 
-    void closeEvent(QCloseEvent *evt);
+    void closeEvent(QCloseEvent *evt) override;
 
 
     /**
@@ -778,7 +788,6 @@ public:
     }
     void SetCursor(unsigned int);
     void OpenAnyFile(const std::string &fname);
-
     const QActionGroup *solidSurfCommonActionGroup() const
     {
         return solidsurfCommonActionGroup;

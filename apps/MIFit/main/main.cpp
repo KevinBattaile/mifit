@@ -3,10 +3,19 @@
 #include <iostream>
 #include <QApplication>
 #include <QTimer>
+#include <QSurfaceFormat>
 #include "ui/MIMainWindow.h"
 
 int main(int argc, char **argv)
 {
+    qputenv("QT_OPENGL", QByteArray("desktop"));
+    qputenv("QSG_RHI_BACKEND", QByteArray("opengl"));
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts);
+    QSurfaceFormat format;
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
+    format.setDepthBufferSize(24);
+    QSurfaceFormat::setDefaultFormat(format);
     int result = -1;
     Application app(argc, argv);
 #ifdef Q_OS_LINUX

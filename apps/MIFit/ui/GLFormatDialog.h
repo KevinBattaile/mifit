@@ -2,7 +2,7 @@
 #define GLFORMATDIALOG_H
 
 #include <QtWidgets/QDialog>
-#include <QtOpenGL/QGLFormat>
+#include "QGLFormat.h"
 
 namespace Ui
 {

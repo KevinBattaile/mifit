@@ -179,16 +179,16 @@ void Text::renderText(float x, float y, const QString &text)
 
 
         glBegin(GL_QUADS);
-        glTexCoord2f(c.s[0], c.t[0]);
+        glTexCoord2f(c.s[0], c.t[1]);
         glVertex2f(0, 0);
 
-        glTexCoord2f(c.s[1], c.t[0]);
+        glTexCoord2f(c.s[1], c.t[1]);
         glVertex2f(c.width, 0);
 
-        glTexCoord2f(c.s[1], c.t[1]);
+        glTexCoord2f(c.s[1], c.t[0]);
         glVertex2f(c.width, c.height);
 
-        glTexCoord2f(c.s[0], c.t[1]);
+        glTexCoord2f(c.s[0], c.t[0]);
         glVertex2f(0, c.height);
         glEnd();
 

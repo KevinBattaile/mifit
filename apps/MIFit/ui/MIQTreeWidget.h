@@ -57,6 +57,7 @@ private:
 
 
 // this is required so that TreeData can be stored in a QVariant
+Q_DECLARE_OPAQUE_POINTER(TreeData*)
 Q_DECLARE_METATYPE(TreeData*);
 
 #endif // ifndef MIQTREEWIDGET_H

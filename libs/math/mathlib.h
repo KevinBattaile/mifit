@@ -36,7 +36,7 @@ inline int ROUND(int a)
 
 #define SIGN(a)  ((a) >= 0 ? (1) : (-1))
 #define fRAND_MAX ((float)RAND_MAX)
-#define absolute(x) ((x) >= 0 ? (x) : -(x))
+template <typename T> inline T absolute(T x) { return x >= 0 ? x : -x; }
 
 inline float frand2(float range)
 {

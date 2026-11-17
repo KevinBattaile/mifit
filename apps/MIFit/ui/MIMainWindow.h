@@ -167,7 +167,7 @@ private slots:
     void updateWindowMenu();
     QWidget *createMIGLWidget();
     void switchLayoutDirection();
-    void setActiveSubWindow(QWidget *window);
+    void setActiveSubWindow(QObject *obj);
     void AfterInit();
 
     void openRecentFile();

@@ -107,7 +107,7 @@ PythonEngine::~PythonEngine()
 void PythonEngine::command(const QString &text)
 {
     QString s = QString("console.push('''") + text + "''')";
-    PyObject *result = PyRun_String(s.toAscii(), Py_eval_input, main_dict, main_dict);
+    PyObject *result = PyRun_String(s.toLatin1(), Py_eval_input, main_dict, main_dict);
     if (result)
     {
         if (result == Py_True)

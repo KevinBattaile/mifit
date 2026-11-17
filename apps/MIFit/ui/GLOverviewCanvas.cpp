@@ -324,7 +324,7 @@ void GLOverviewCanvas::mouseDoubleClickEvent(QMouseEvent *e)
     e->accept();
     if (!GetView())
         return;
-    GetView()->mouseDoubleClickEvent(e);
+    QCoreApplication::sendEvent(GetView(), e);
 }
 
 void GLOverviewCanvas::keyPressEvent(QKeyEvent *e)
@@ -337,7 +337,7 @@ void GLOverviewCanvas::keyPressEvent(QKeyEvent *e)
     {
         return;
     }
-    nChar = s[0].toAscii();
+    nChar = s[0].toLatin1();
 
     bool shift = (e->modifiers() & Qt::ShiftModifier);
     if (nChar <= 256 && isupper(nChar) && !shift)

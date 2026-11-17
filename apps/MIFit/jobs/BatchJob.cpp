@@ -12,7 +12,7 @@
 #include "BatchJob.h"
 #include "OpenJobResults.h"
 #include "ui/uilib.h"
-
+#include <unistd.h>
 #ifdef _WIN32
 #include <process.h>
 #include <time.h>
@@ -126,7 +126,7 @@ void BatchJob::doJobFinished()
 
     JobFinishedStatusLabel *messageLabel = new JobFinishedStatusLabel(message, 3000, MIMainWindow::instance()->statusBar());
     messageLabel->setStyleSheet(isSuccess() ? "QLabel { background: springgreen; }" : "QLabel { color: white; font: bold; background: red; }");
-    Logger::log("%s", message.toAscii().constData());
+    Logger::log("%s", message.toLatin1().constData());
 }
 
 void BatchJob::AbortJob()
@@ -144,12 +144,12 @@ QString BatchJob::Info()
                    "Job directory: %6\n"
                    "Running: %7\n"
                    "Success: %8\n")
-           .arg(jobName_.toAscii().constData())
+           .arg(jobName_.toLatin1().constData())
            .arg(jobId_)
-           .arg(program_.toAscii().constData())
-           .arg(arguments_.join("\" \"").toAscii().constData())
-           .arg(logFile.toAscii().constData())
-           .arg(workingDirectory_.toAscii().constData())
+           .arg(program_.toLatin1().constData())
+           .arg(arguments_.join("\" \"").toLatin1().constData())
+           .arg(logFile.toLatin1().constData())
+           .arg(workingDirectory_.toLatin1().constData())
            .arg(isRunning() ? "true" : "false")
            .arg(isSuccess() ? "true" : "false");
 }

@@ -47,7 +47,7 @@ static void stringSplit(std::string str,
                         const std::string &delim,
                         std::vector<std::string> &results)
 {
-    unsigned int cutAt;
+    size_t cutAt;
     while ( (cutAt = str.find_first_of(delim)) != str.npos)
     {
         if (cutAt > 0)

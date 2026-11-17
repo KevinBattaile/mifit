@@ -1,7 +1,12 @@
-#include <QtDeclarative/QDeclarativeEngine>
-#include <QtDeclarative/QDeclarativeContext>
-#include <QtDeclarative/QDeclarativeComponent>
+#include <QDebug>
+#include <GL/gl.h>
+#include <QActionGroup>
+#include <QQmlEngine>
+#include <QQmlContext>
+#include <QQmlComponent>
 #include <QOpenGLWidget>
+#include <QOpenGLContext>
+#include <QQuickWindow>
 
 #include <vector>
 #include <algorithm>
@@ -36,8 +41,8 @@
 #include <QCloseEvent>
 #include <QApplication>
 #include <QClipboard>
-#include <QPrinter>
-#include <QPrintDialog>
+#include <QtPrintSupport/QPrinter>
+#include <QtPrintSupport/QPrintDialog>
 #include <QPainter>
 #include <QRect>
 #include <QVBoxLayout>
@@ -53,6 +58,11 @@
 #include <QGraphicsItem>
 #include <QGraphicsObject>
 #include <QDebug>
+#include <QGraphicsSceneMouseEvent>
+#include <QQuickPaintedItem>
+#include <QQuickItem>
+#include <QMouseEvent>
+#include <QSGRendererInterface>
 
 #include <math/mathlib.h>
 #include <chemlib/chemlib.h>
@@ -330,7 +340,7 @@ static bool checkmappath(char *file)
         std::string origPath = file;
         SplitPath(origPath, &path, &name, &ext);
         QFileInfo newFile(QDir::currentPath(), QString((ext.size() ? name + '.' + ext : name).c_str()));
-        sprintf(file, "%s", newFile.absoluteFilePath().toAscii().constData());
+        sprintf(file, "%s", newFile.absoluteFilePath().toLatin1().constData());
     }
     //check against new path if it was updated
     if (QFileInfo(file).exists())
@@ -358,71 +368,13 @@ static bool checkmappath(char *file)
 }
 
 
-class MainItem : public QGraphicsItem
+
+MIGLWidget::MIGLWidget(QWidget *parent)
+    : QOpenGLWidget(parent)
 {
-public:
-    MainItem(MIGLWidget *widget, QGraphicsItem *parent = 0)
-        : QGraphicsItem(parent), glWidget(widget)
-    {
-        setFlag(ItemStacksBehindParent);
-        setFlag(ItemIgnoresTransformations);
-        setFlag(ItemIgnoresParentOpacity);
-        setZValue(-std::numeric_limits<qreal>::max());
-    }
-
-    void setSize(const QSizeF &size)
-    {
-        prepareGeometryChange();
-        this->size = size;
-    }
-
-    virtual QRectF boundingRect() const
-    {
-        return QRectF(QPointF(), size);
-    }
-
-    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = 0)
-    {
-        Q_UNUSED(option)
-        Q_UNUSED(widget)
-        glWidget->draw(painter);
-    }
-
-    virtual void mousePressEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMousePress(event);
-    }
-
-    virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMouseMove(event);
-    }
-
-    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMouseRelease(event);
-    }
-
-    virtual void mouseDoubleClickEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMouseDoubleClick(event);
-    }
-
-private:
-    MIGLWidget *glWidget;
-    QSizeF size;
-};
-
-MIGLWidget::MIGLWidget()
-    : QDeclarativeView(QUrl("qrc:/qml/root.qml"))
-{
-    setViewport(new QOpenGLWidget);
-    setViewportUpdateMode(FullViewportUpdate);
+    
+    
     PaletteColor c = Application::instance()->GetBackgroundColor();
-    QDeclarativeView::scene()->setBackgroundBrush(QColor(c.red, c.green, c.blue));
-
-    setResizeMode(SizeRootObjectToView);
-    mainItem = new MainItem(this, rootObject());
 
     SetTitle(""); // so that Modify won't complain about missing [*]
 
@@ -519,19 +471,6 @@ MIGLWidget::MIGLWidget()
     is_drawing = false;
     link_symm = false;
 
-    rootContext()->setContextProperty("root", rootObject());
-    rootContext()->setContextProperty("stack", AtomStack);
-    QDeclarativeComponent stackComponent(engine(), QUrl("qrc:/qml/stack.qml"));
-    stackItem = qobject_cast<QGraphicsObject *>(stackComponent.create());
-    if (stackItem)
-        stackItem->setParentItem(rootObject());
-
-    rootContext()->setContextProperty("messageVisible", QVariant(false));
-    rootContext()->setContextProperty("message", QVariant(""));
-    QDeclarativeComponent messageComponent(engine(), QUrl("qrc:/qml/message.qml"));
-    messageItem = qobject_cast<QGraphicsObject *>(messageComponent.create());
-    if (messageItem)
-        messageItem->setParentItem(rootObject());
 
     popup_menu = new QMenu(this);
     connect(popup_menu, SIGNAL(aboutToShow()), this, SLOT(updatePopupMenu()));
@@ -580,7 +519,7 @@ MIGLWidget::MIGLWidget()
 
     DoingRange = 0;
 
-    scene->renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(viewport()));
+    scene->renderer->setQOpenGLWidget(this);
 
     annotationPickingRenderable = new CMolwViewAnnotationPickingRenderable(stereoView, frustum, this);
     annotationPickingRenderable->setFontSize(12);
@@ -622,7 +561,7 @@ MIGLWidget::MIGLWidget()
     // special top-level widget for fullscreen window
     fullScreenWidget = new QWidget;
     fullScreenLayout = new QVBoxLayout(fullScreenWidget);
-    fullScreenLayout->setMargin(0);
+    fullScreenLayout->setContentsMargins(0,0,0,0);
     fullScreenLayout->setSpacing(0);
 
     QVBoxLayout *labelLayout = new QVBoxLayout();
@@ -774,8 +713,8 @@ void MIGLWidget::moleculeToBeDeleted(MIMoleculeBase *model)
 
 void MIGLWidget::doRefresh()
 {
-    QDeclarativeView::scene()->invalidate();
-    QDeclarativeView::scene()->update();
+    update();
+    update();
     update();
     MIMainWindow::instance()->updateToolBar();
     MIMainWindow::instance()->updateNavigator();
@@ -884,8 +823,8 @@ void MIGLWidget::OnActivated()
 void MIGLWidget::ReDraw()
 {
     CheckCenter();
-    mainItem->update();
-    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
+    this->update();
+//    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
     MIMainWindow::instance()->updateNavigator();
 }
 
@@ -923,17 +862,69 @@ void MIGLWidget::CheckCenter()
         node++;
     }
 }
+void MIGLWidget::initializeGL()
+{
+    // Initialize OpenGL function pointers for this context
+    initializeOpenGLFunctions();
+    
+    PaletteColor c = Application::instance()->GetBackgroundColor();
+    glClearColor(c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glEnable(GL_LIGHT0);
+}
 
+void MIGLWidget::resizeGL(int w, int h)
+{
+    glViewport(0, 0, w, h);
+    
+    // Set up the 3D perspective / orthographic projection matrix
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    
+    double aspect = (double)w / (double)(h ? h : 1);
+    glOrtho(-50.0 * aspect, 50.0 * aspect, -50.0, 50.0, -1000.0, 1000.0);
+    
+    glMatrixMode(GL_MODELVIEW);
+}
+
+void MIGLWidget::paintGL()
+{
+    PaletteColor c = Application::instance()->GetBackgroundColor();
+    glClearColor(c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+
+    QPainter painter(this);
+    draw(&painter);
+    painter.end();
+}
 
 void MIGLWidget::draw(QPainter *painter)
 {
-    painter->save();
-    painter->beginNativePainting();
+    if (painter)
+    {
+        painter->save();
+        painter->beginNativePainting();
+    }
     glPushAttrib(GL_ALL_ATTRIB_BITS);
+    glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glUseProgram(0);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_LIGHTING);
+    glViewport(0, 0, this->width(), this->height());
     glMatrixMode(GL_PROJECTION);
     glPushMatrix();
+    glLoadIdentity();
+    double aspect = (double)this->width() / (double)(this->height() ? this->height() : 1);
+    glOrtho(-50.0 * aspect, 50.0 * aspect, -50.0, 50.0, -1000.0, 1000.0);
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
+    glLoadIdentity();
 
     is_drawing = true;
     Displaylist *Models = GetDisplaylist();
@@ -966,6 +957,8 @@ void MIGLWidget::draw(QPainter *painter)
         CheckCenter();
         MIMainWindow::instance()->updateNavigator();
     }
+
+    CheckCenter();
 
     scene->initializeForRender();
 
@@ -1066,7 +1059,7 @@ void MIGLWidget::draw(QPainter *painter)
 #if SHOW_RENDER_TIME
     QString framesPerSecond = QString("render in %1 ms")
                               .arg(elapsedTime);
-    Logger::debug(framesPerSecond.toAscii().constData());
+    Logger::debug(framesPerSecond.toLatin1().constData());
     qDebug() << qPrintable(framesPerSecond);
 #endif
 
@@ -1075,9 +1068,13 @@ void MIGLWidget::draw(QPainter *painter)
     glPopMatrix();
     glMatrixMode(GL_MODELVIEW);
     glPopMatrix();
+    glPopClientAttrib();
     glPopAttrib();
-    painter->endNativePainting();
-    painter->restore();
+    if (painter)
+    {
+        painter->endNativePainting();
+        painter->restore();
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1086,7 +1083,7 @@ void MIGLWidget::draw(QPainter *painter)
 void MIGLWidget::OnPrint()
 {
     scene->renderer->setPickingEnabled(true);
-    QPixmap imageToPrint = QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()); //TODO: could alter canvas size here
+    QPixmap imageToPrint = QPixmap::fromImage(this->grabFramebuffer());
     scene->renderer->setPickingEnabled(false);
 
     QPrinter prn;
@@ -2070,13 +2067,14 @@ void MIGLWidget::timerEvent(QTimerEvent*)
     }
     if (Update)
     {
-        ReDraw();
+        this->update();
+	// ReDraw();
         // to let the event queue catch up if Draw takes a long time
-#ifdef _WIN32
-        Sleep(10);
-#else
-        usleep(10000);
-#endif
+// #ifdef _WIN32
+//        Sleep(10);
+// #else
+//        usleep(10000);
+// #endif
     }
 }
 
@@ -2085,7 +2083,6 @@ void MIGLWidget::resizeEvent(QResizeEvent *evt)
 {
     int sx = evt->size().width();
     int sy = evt->size().height();
-    mainItem->setSize(evt->size());
 
 #ifdef __APPLE__
     QSettings settings;
@@ -2095,12 +2092,12 @@ void MIGLWidget::resizeEvent(QResizeEvent *evt)
 
     if (sx == 0 || sy == 0)
     {
-        QDeclarativeView::resizeEvent(evt);
+        QOpenGLWidget::resizeEvent(evt);
         return;
     }
     viewpoint->setSize(sx, sy);
     MIMainWindow::instance()->updateNavigator();
-    QDeclarativeView::resizeEvent(evt);
+    QOpenGLWidget::resizeEvent(evt);
 }
 
 void MIGLWidget::OnStereoToggle()
@@ -2181,7 +2178,7 @@ void MIGLWidget::OnGeometryAngle()
                    .arg(a1->name()).arg(a2->name()).arg(a3->name())
                    .arg(d, 0, 'f', 3);
         setMessage(message);
-        Logger::log(message.toAscii().constData());
+        Logger::log(message.toLatin1().constData());
         PaletteChanged = true;
         doRefresh();
     }
@@ -2198,7 +2195,7 @@ void MIGLWidget::OnGeometryDistance()
                    .arg(a1->name()).arg(a2->name())
                    .arg(d, 0, 'f', 3);
         setMessage(message);
-        Logger::log(message.toAscii().constData());
+        Logger::log(message.toLatin1().constData());
         Displaylist *models = GetDisplaylist();
         if (models != NULL)
         {
@@ -2223,7 +2220,7 @@ void MIGLWidget::OnGeometryTorsion()
                    .arg(a1->name()).arg(a2->name()).arg(a3->name()).arg(a4->name())
                    .arg(d, 0, 'f', 3);
         setMessage(message);
-        Logger::log(message.toAscii().constData());
+        Logger::log(message.toLatin1().constData());
         PaletteChanged = true;
         doRefresh();
     }
@@ -2464,7 +2461,7 @@ void MIGLWidget::gotoXyzWithPrompt()
 
     str.replace(',', " ");
     viewpoint->Do();
-    if (sscanf(str.toAscii().constData(), "%f%f%f", &m_x, &m_y, &m_z) == 3)
+    if (sscanf(str.toLatin1().constData(), "%f%f%f", &m_x, &m_y, &m_z) == 3)
     {
         moveTo(Vector3<float>(m_x, m_y, m_z));
     }
@@ -2542,7 +2539,7 @@ void MIGLWidget::OnVdwDotSurface()
                     .arg(numDots);
             setMessage(message);
             _modified = true;
-            Logger::log(message.toAscii().constData());
+            Logger::log(message.toLatin1().constData());
             PaletteChanged = true;
             doRefresh();
         }
@@ -2574,7 +2571,7 @@ void MIGLWidget::OnSurfaceSolvent()
                     .arg(numDots);
             setMessage(message);
             _modified = true;
-            Logger::log(message.toAscii().constData());
+            Logger::log(message.toLatin1().constData());
             PaletteChanged = true;
             doRefresh();
         }
@@ -2583,7 +2580,7 @@ void MIGLWidget::OnSurfaceSolvent()
 
 void MIGLWidget::clearMessage()
 {
-    setMessage(QString::null);
+    setMessage(QString());
 }
 
 void MIGLWidget::cancelFitting()
@@ -3126,7 +3123,7 @@ void MIGLWidget::OnFitSetuptorsion()
                 QString message = QString("%1 atoms under torsion")
                         .arg(Torsioning);
                 setMessage(message);
-                Logger::log(message.toAscii().constData());
+                Logger::log(message.toLatin1().constData());
             }
         }
         PaletteChanged = true;
@@ -3811,7 +3808,7 @@ void MIGLWidget::clearStack()
 void MIGLWidget::OnEditCopy()
 {
     scene->renderer->setPickingEnabled(true);
-    QApplication::clipboard()->setPixmap(QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()));
+    QApplication::clipboard()->setPixmap(QPixmap::fromImage(this->grabFramebuffer()));
     scene->renderer->setPickingEnabled(false);
 }
 
@@ -3911,7 +3908,7 @@ void MIGLWidget::OnGeomNeighbours()
             .arg(cutoff);
     setMessage(message);
     PaletteChanged = true;
-    Logger::log(message.toAscii().constData());
+    Logger::log(message.toLatin1().constData());
     doRefresh();
 }
 
@@ -4597,7 +4594,7 @@ void MIGLWidget::addResidueWithPrompt()
     unsigned short chainId = static_cast<unsigned short>(addResidueDialog.chainId());
     unsigned int where = static_cast<unsigned int>(addResidueDialog.modelLocation());
     unsigned int m_phipsi = static_cast<unsigned int>(addResidueDialog.residueOffset());
-    Residue *m_res = GetDictRes(addResidueDialog.residueType().toAscii().constData());
+    Residue *m_res = GetDictRes(addResidueDialog.residueType().toLatin1().constData());
 
     if (m_res == NULL)
     {
@@ -5224,7 +5221,7 @@ void MIGLWidget::OnObjectSurfaceresidues()
             _modified = true;
             QString message = QString("Number of dots: %1").arg(numDots);
             setMessage(message);
-            Logger::log(message.toAscii().constData());
+            Logger::log(message.toLatin1().constData());
             PaletteChanged = true;
             ReDraw();
         }
@@ -5268,7 +5265,7 @@ void MIGLWidget::OnObjectSurfaceatom()
             _modified = true;
             QString message = QString("Number of dots: %1").arg(numDots);
             setMessage(message);
-            Logger::log(message.toAscii().constData());
+            Logger::log(message.toLatin1().constData());
             PaletteChanged = true;
             ReDraw();
         }
@@ -5312,7 +5309,7 @@ void MIGLWidget::OnObjectSurfaceAtoms()
             _modified = true;
             QString message = QString("Number of dots: %1").arg(numDots);
             setMessage(message);
-            Logger::log(message.toAscii().constData());
+            Logger::log(message.toLatin1().constData());
             PaletteChanged = true;
             ReDraw();
         }
@@ -5617,7 +5614,7 @@ void MIGLWidget::OnSequenceEnter()
     layout->addWidget(new QDialogButtonBox(&dlg));
     if (dlg.exec() == QDialog::Accepted)
     {
-        Models->CurrentItem()->SetSequence(text->toPlainText().toAscii().constData());
+        Models->CurrentItem()->SetSequence(text->toPlainText().toLatin1().constData());
         PaletteChanged = true;
         ReDraw();
     }
@@ -5710,7 +5707,7 @@ void MIGLWidget::OnSequenceInsertgap()
     QString message = QString("Sequence identities: %1")
             .arg(node->SequenceIdentities());
     setMessage(message);
-    Logger::log(message.toAscii().constData());
+    Logger::log(message.toLatin1().constData());
     PaletteChanged = true;
     ReDraw();
 }
@@ -5746,7 +5743,7 @@ void MIGLWidget::OnSequenceDeletegap()
     QString message = QString("Sequence identities: %1")
             .arg(node->SequenceIdentities());
     setMessage(message);
-    Logger::log(message.toAscii().constData());
+    Logger::log(message.toLatin1().constData());
     PaletteChanged = true;
     ReDraw();
 }
@@ -5782,7 +5779,7 @@ void MIGLWidget::OnSequenceInsertlowergap()
     QString message = QString("Sequence identities: %1")
             .arg(node->SequenceIdentities());
     setMessage(message);
-    Logger::log(message.toAscii().constData());
+    Logger::log(message.toLatin1().constData());
     PaletteChanged = true;
     ReDraw();
 }
@@ -5817,7 +5814,7 @@ void MIGLWidget::OnSequenceDeletelowergap()
     node->DeleteLowerGap(res);
     QString message = QString("Sequence identities: %1")
             .arg(node->SequenceIdentities());
-    Logger::log(message.toAscii().constData());
+    Logger::log(message.toLatin1().constData());
     PaletteChanged = true;
     ReDraw();
 }
@@ -7399,7 +7396,7 @@ void MIGLWidget::OnSequencePosition()
     for (size_t i = 0; i < seq.length(); i++)
     {
         QString s;
-        s.sprintf("%5ld %c", static_cast<long>(i+1), seq[i]);
+        s.asprintf("%5ld %c", static_cast<long>(i+1), seq[i]);
         listItems += s;
     }
 
@@ -7624,7 +7621,7 @@ void MIGLWidget::OnCheckpointModel()
         return;
     }
 
-    if (!SaveModelFile(model, newname.toAscii().constData()))
+    if (!SaveModelFile(model, newname.toLatin1().constData()))
     {
         Logger::message("Warning: Unable to save model - will not be able to Undo");
     }
@@ -7808,8 +7805,10 @@ void MIGLWidget::OnToolTip()
     if (oldx != mouse.x() || oldy != mouse.y())
     {
         std::string s;
+        makeCurrent();
         prepareAtomPicking();
         vector<GLuint> ids = mousePicker->pick(mouse.x(), mouse.y(), frustum, atomPickingRenderable);
+        doneCurrent();
         MIAtom *atom = NULL;
         if (ids.size() > 0)
         {
@@ -10577,7 +10576,7 @@ void MIGLWidget::keyPressEvent(QKeyEvent *e)
         {
             return;
         }
-        nChar = s[0].toAscii();
+        nChar = s[0].toLatin1();
     }
 
     if (nChar <= 256 && isupper(nChar) && !shift)
@@ -10642,15 +10641,35 @@ void MIGLWidget::keyPressEvent(QKeyEvent *e)
     }
     if (!OnKeyDown(nChar, e->modifiers()))
     {
-        QDeclarativeView::keyPressEvent(e); // chain to parent
+        QOpenGLWidget::keyPressEvent(e); // chain to parent
     }
     ReDraw();
     MIMainWindow::instance()->updateToolBar();
 }
 
-void MIGLWidget::handleMousePress(QGraphicsSceneMouseEvent *e)
+void MIGLWidget::mousePressEvent(QMouseEvent *e)
 {
-    QPoint pos = mapFromScene(e->scenePos());
+    handleMousePress(e);
+}
+
+void MIGLWidget::mouseReleaseEvent(QMouseEvent *e)
+{
+    handleMouseRelease(e);
+}
+
+void MIGLWidget::mouseMoveEvent(QMouseEvent *e)
+{
+    handleMouseMove(e);
+}
+
+void MIGLWidget::mouseDoubleClickEvent(QMouseEvent *e)
+{
+    handleMouseDoubleClick(e);
+}
+
+void MIGLWidget::handleMousePress(QMouseEvent *e)
+{
+    QPoint pos = e->position().toPoint();
 
     OnMousePress(pos, e->button() | e->buttons(), e->modifiers());
     e->accept();
@@ -10678,9 +10697,9 @@ void MIGLWidget::OnMousePress(QPoint pos, Qt::MouseButtons buttons, Qt::Keyboard
     }
 }
 
-void MIGLWidget::handleMouseRelease(QGraphicsSceneMouseEvent *e)
+void MIGLWidget::handleMouseRelease(QMouseEvent *e)
 {
-    QPoint pos = mapFromScene(e->scenePos());
+    QPoint pos = e->position().toPoint();
 
     OnMouseRelease(pos, e->button() | e->buttons(), e->modifiers());
 }
@@ -10702,6 +10721,7 @@ void MIGLWidget::OnMouseRelease(QPoint pos, Qt::MouseButtons buttons, Qt::Keyboa
             mouse = QPoint(pos.x(), pos.y());
             if (!TopView)
             {
+                makeCurrent();
                 annotationPickingRenderable->setModels(models);
 
                 vector<GLuint> ids = mousePicker->pick(pos.x(), pos.y(), frustum, annotationPickingRenderable);
@@ -10770,6 +10790,7 @@ void MIGLWidget::OnMouseRelease(QPoint pos, Qt::MouseButtons buttons, Qt::Keyboa
                     PaletteChanged = true;
                     doRefresh();
                 }
+                doneCurrent();
             }
         }
         else
@@ -10794,7 +10815,7 @@ void MIGLWidget::OnMouseRelease(QPoint pos, Qt::MouseButtons buttons, Qt::Keyboa
         }
     }
 
-    if (buttons & (Qt::RightButton | Qt::MidButton))
+    if (buttons & (Qt::RightButton | Qt::MiddleButton))
     {
         // we've been showing drags as ball-and-stick and now we need
         // to redraw
@@ -10831,9 +10852,9 @@ void MIGLWidget::OnMouseRelease(QPoint pos, Qt::MouseButtons buttons, Qt::Keyboa
 
 }
 
-void MIGLWidget::handleMouseMove(QGraphicsSceneMouseEvent *e)
+void MIGLWidget::handleMouseMove(QMouseEvent *e)
 {
-    QPoint pos = mapFromScene(e->scenePos());
+    QPoint pos = e->position().toPoint();
 
     if (e->buttons() == Qt::NoButton)
     {
@@ -10842,7 +10863,7 @@ void MIGLWidget::handleMouseMove(QGraphicsSceneMouseEvent *e)
     OnMouseMove(pos, e->button() | e->buttons(), e->modifiers());
 }
 
-void MIGLWidget::handleMouseDoubleClick(QGraphicsSceneMouseEvent *e)
+void MIGLWidget::handleMouseDoubleClick(QMouseEvent *e)
 {
 //FIXME: implement double click support.  Note that the widget gets a
 //mousePressEvent() and a mouseReleaseEvent() before the
@@ -10855,7 +10876,7 @@ void MIGLWidget::handleMouseDoubleClick(QGraphicsSceneMouseEvent *e)
 }
 
 
-void MIGLWidget::enterEvent(QEvent*)
+void MIGLWidget::enterEvent(QEnterEvent*)
 {
     MouseInWindow = true;
     if (!TimerOn)
@@ -10923,7 +10944,9 @@ void MIGLWidget::doSlabDrag(int x, int y, int /* dx */, int dy)
     static int draggingFront = false;
     if (!DraggingSlab)
     {
+        makeCurrent();
         vector<GLuint> ids = mousePicker->pick(x, y, frustum, slabPickingRenderable);
+        doneCurrent();
         if (ids.size() > 0)
         {
             draggingFront = (ids[0] == 1);
@@ -10991,14 +11014,14 @@ void MIGLWidget::OnExportImage()
     else if (selectedFilter.startsWith("TIFF"))
         defaultExt = ".tif";
 
-    std::string ext(file_extension(path.toAscii().constData()));
+    std::string ext(file_extension(path.toLatin1().constData()));
     if (ext.empty())
     {
         path += defaultExt;
     }
 
     scene->renderer->setPickingEnabled(true);
-    QPixmap image = QPixmap::fromImage(static_cast<QOpenGLWidget*>(viewport())->grabFramebuffer()); //TODO: could alter canvas size here
+    QPixmap image = QPixmap::fromImage(this->grabFramebuffer()); //TODO: could alter canvas size here
     image.save(path);
     scene->renderer->setPickingEnabled(false);
 
@@ -11221,7 +11244,7 @@ bool MIGLWidget::OnOpenDocument(const std::string &path)
     const char *pathname = (const char*)path.c_str();
     char buf[2000];
     char fileBuf[2000];
-    std::auto_ptr<io> ioObj(io::defaultIo());
+    std::unique_ptr<io> ioObj(io::defaultIo());
     io &file = *ioObj;
     int nmap;
     std::string initPath = QDir::currentPath().toStdString();
@@ -11438,7 +11461,7 @@ bool MIGLWidget::LoadPDBFile(const char *pathname)
     //std::deque<MIAtom> *atoms= new std::deque<MIAtom>;
     std::vector<Bond> connects;
     std::string compound;
-    std::auto_ptr<io> ioObj(io::defaultIo());
+    std::unique_ptr<io> ioObj(io::defaultIo());
     io &file = *ioObj;
     if (!file.open(pathname, "r"))
     {
@@ -11704,7 +11727,7 @@ void MIGLWidget::OnAnnotation()
     }
 
     ViewPoint *viewpoint = GetViewPoint();
-    node->addAnnotation(str.toAscii().constData(), viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
+    node->addAnnotation(str.toLatin1().constData(), viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
     // make most recently added annotation the CurrentAnnotation
     CurrentAnnotation = node->getAnnotations().back();
 }
@@ -11725,7 +11748,7 @@ void MIGLWidget::OnNewModel()
     }
 
     vector<Bond> connects;
-    Models->AddItem(NULL, compound.toAscii().constData(), NULL, &connects, MoleculeType::New);
+    Models->AddItem(NULL, compound.toLatin1().constData(), NULL, &connects, MoleculeType::New);
     //OnFitInsertresidue();
     Modify(true);
     ReDrawAll();
@@ -11827,7 +11850,7 @@ bool MIGLWidget::IsXMLMolecule(io &file)
 
 bool MIGLWidget::IsXMLDocument(const char *pathname)
 {
-    std::auto_ptr<io> ioObj(io::defaultIo());
+    std::unique_ptr<io> ioObj(io::defaultIo());
     io &file = *ioObj;
     file.open(pathname, "r");
     if (!file.isOpen())
@@ -11930,7 +11953,7 @@ bool MIGLWidget::LoadMap(const char *buf, const char *pathname, const std::strin
             std::string strPath(pathname);
             SplitPath(origPath, &path, &name, &ext);
             QFileInfo newFile(QFileInfo(strPath.c_str()).path(), QString((ext.size() ? name + '.' + ext : name).c_str()));
-            sprintf(file, "%s", newFile.absoluteFilePath().toAscii().constData());
+            sprintf(file, "%s", newFile.absoluteFilePath().toLatin1().constData());
         }
         if (checkmappath(file))
         {
@@ -12514,11 +12537,8 @@ void MIGLWidget::StackExpandTop2Range()
 
 void MIGLWidget::setMessage(const QString &message)
 {
-    rootContext()->setContextProperty("messageVisible", !message.isEmpty());
-    if (!message.isEmpty())
-        rootContext()->setContextProperty("message", message);
-}
 
+}
 const mi::opengl::Camera *MIGLWidget::getCamera() const
 {
     return camera;

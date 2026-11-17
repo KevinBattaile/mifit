@@ -1,3 +1,4 @@
+#include <QVector>
 #ifndef BONDRENDERER_H
 #define BONDRENDERER_H
 

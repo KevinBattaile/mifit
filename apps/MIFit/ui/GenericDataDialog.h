@@ -13,7 +13,7 @@ class GenericDataDialog : public QDialog
 
 public:
 
-    GenericDataDialog(QWidget *parent = 0, Qt::WindowFlags f = 0);
+    GenericDataDialog(QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags());
 
     void addBoolField(const QString &label, bool value);
     void addIntField(const QString &label, int value);
