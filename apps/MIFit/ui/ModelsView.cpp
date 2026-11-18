@@ -1693,7 +1693,6 @@ void ModelsTree::goToResidue(const std::string &nameRef)
     MIStringTrim(name, false);
 
     std::string residueName = name;
-    char chain_id;
 
     Residue *chain = NULL;
     Residue *residue = NULL;
@@ -1701,36 +1700,46 @@ void ModelsTree::goToResidue(const std::string &nameRef)
     {
         // Search current chain using full string
         chain = currentChain;
-        chain_id = currentChain->chain_id()&255;
-        residue = residue_from_name(chain, residueName.c_str(), chain_id);
+        residue = residue_from_name(chain, residueName.c_str(), currentChain->chain_id_str());
     }
     if (residue == NULL && currentModel != NULL)
     {
         // Search model using full string
         chain = currentModel->residuesBegin();
-        chain_id = '*';
-        residue = residue_from_name(chain, residueName.c_str(), chain_id);
+        residue = residue_from_name(chain, residueName.c_str(), std::string("*"));
     }
-    if (residue == NULL)
+    if (residue == NULL && currentModel != NULL)
     {
-        // Search model using first character as chain_id and rest as name
-        char chain_id = name.size()>0 ? name[0] : ' ';
-        if (chain_id == '_')
+        // Check for whitespace-separated "<chain> <resnum>" first, then fall back to first character as chain_id
+        size_t sp = name.find_first_of(" \t");
+        std::string chain_str;
+        if (sp != std::string::npos)
         {
-            chain_id = ' ';
+            chain_str = name.substr(0, sp);
+            residueName = name.substr(sp + 1);
         }
-        residueName = &name[1];
+        else if (!name.empty())
+        {
+            chain_str = std::string(1, name[0]);
+            residueName = name.substr(1);
+        }
+        else
+        {
+            chain_str = " ";
+            residueName.clear();
+        }
+        if (chain_str == "_")
+        {
+            chain_str = " ";
+        }
         MIStringTrim(residueName, false);
         MIStringTrim(residueName, true);
         if (residueName.empty() && residuesTree->getCurrentResidue() != NULL)
         {
-            residueName = residuesTree->getCurrentResidue()->name().c_str();
+            residueName = residuesTree->getCurrentResidue()->name();
         }
-        if (currentModel != NULL)
-        {
-            chain = currentModel->residuesBegin();
-            residue = residue_from_name(chain, residueName.c_str(), chain_id);
-        }
+        chain = currentModel->residuesBegin();
+        residue = residue_from_name(chain, residueName.c_str(), chain_str);
     }
 
     if (residue != NULL)
@@ -2187,14 +2196,12 @@ void ModelsTree::EditItem()
         {
             Residue *chain = *iter;
             Molecule *model = chainToModel[chain];
-            int chain_id = chain->chain_id();
-            char chainid = (char)(chain_id&255);
+            std::string chainid = chain->displayChainId(" ");
 
-            QString s = QInputDialog::getText(this, "Chain ID", "Enter Chain ID (single char)", QLineEdit::Normal, QString(chainid));
+            QString s = QInputDialog::getText(this, "Chain ID", "Enter Chain ID", QLineEdit::Normal, QString::fromStdString(chainid));
             if (!s.isEmpty())
             {
-                unsigned char c = s.toLatin1().at(0);
-                model->setChainId(chain, c);
+                model->setChainId(chain, s.toStdString());
                 chainsModified.insert(model);
             }
             bool ok;

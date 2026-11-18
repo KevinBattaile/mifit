@@ -12,7 +12,7 @@ namespace chemlib
     typedef MIAtomList::const_iterator MIAtom_const_iter;
     typedef MIAtomList::iterator MIAtom_iter;
 
-    const unsigned int MAXATOMNAME = 6;
+    const unsigned int MAXATOMNAME = 12;
 
 }
 

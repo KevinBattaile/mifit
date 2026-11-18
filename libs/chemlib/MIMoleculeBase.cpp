@@ -773,7 +773,21 @@ void MIMoleculeBase::FixChains()
         }
         else
         {
-            if (state == PEPTIDE)
+            if (state != -1 && prevRes != NULL && res->chain_id_str() != prevRes->chain_id_str())
+            {
+                if (prevState == PEPTIDE)
+                {
+                    prevRes->add_linkage_type(CTERMINUS);
+                    res->add_linkage_type(NTERMINUS);
+                }
+                else if (prevState == NUCLEIC)
+                {
+                    prevRes->add_linkage_type(LAST);
+                    res->add_linkage_type(FIRST);
+                }
+                ++chainno;
+            }
+            else if (state == PEPTIDE)
             {
                 MIAtom *CA1 = atom_from_name("CA", *prevRes);
                 MIAtom *CA2 = atom_from_name("CA", *res);
@@ -1134,6 +1148,10 @@ static int greaterthan(Residue *res1, Residue *res2)
     {
         return (chainid1 > chainid2);
     }
+    if (res1->chain_id_str() != res2->chain_id_str())
+    {
+        return (res1->chain_id_str() > res2->chain_id_str());
+    }
     return (atoi(res1->name().c_str()) > atoi(res2->name().c_str()));
 }
 
@@ -1180,10 +1198,11 @@ static Residue *findChainEnd(Residue *res)
         return res;
     }
     int chainId = res->chain_id()&255;
+    const std::string &chainStr = res->chain_id_str();
     Residue *next = res->next();
     while (next != NULL)
     {
-        if ((next->chain_id()&255) != chainId)
+        if ((next->chain_id()&255) != chainId || next->chain_id_str() != chainStr)
         {
             return res;
         }
@@ -1857,10 +1876,15 @@ Residue*MIMoleculeBase::doInsertRes(Residue *atres, const Residue *dictres, int 
     if (chain_id == 0 && atres != NULL)
     {
         chain_id = atres->chain_id();
+        new_res->set_chain_id_str(atres->chain_id_str());
     }
     if (chain_id != 0)
     {
         new_res->set_chain_id(chain_id);
+        if (atres != NULL && (atres->chain_id() & 255) == (chain_id & 255))
+        {
+            new_res->set_chain_id_str(atres->chain_id_str());
+        }
     }
     for (int i = 0; i < new_res->atomCount(); i++)
     {
@@ -2313,11 +2337,18 @@ void MIMoleculeBase::setResidueNames(std::vector<Residue*> &residues, const std:
 
 void MIMoleculeBase::setChainId(Residue *chain, char c)
 {
+    setChainId(chain, std::string(1, c));
+}
+
+void MIMoleculeBase::setChainId(Residue *chain, const std::string &chain_str)
+{
     int chain_id = chain->chain_id();
     int chainno = chain_id/256;
+    char c = chain_str.empty() ? ' ' : chain_str[0];
     Residue *res = chain;
     while (Monomer::isValid(res) && (chain_id == res->chain_id()))
     {
+        res->set_chain_id_str(chain_str);
         res->set_chain_id((c&255) + chainno* 256);
         res = res->next();
     }

@@ -13,7 +13,9 @@ namespace chemlib
 
 
 // move these to "system"
-#define MAXNAME 6
+#ifndef MAXNAME
+#define MAXNAME 12
+#endif
 
 // types for edge order
 #define NORMALBOND 0

@@ -2231,7 +2231,7 @@ void Molecule::MakeSecondaryStructure(bool bRibbon, bool bSchematic)
                     if (startSS != currentSS)
                     {
                         endRes = prevRes;
-                        Logger::debug("end %s %s %c %d", endRes->type().c_str(), endRes->name().c_str(), endRes->chain_id(), residueCount);
+                        Logger::debug("end %s %s %s %d", endRes->type().c_str(), endRes->name().c_str(), endRes->displayChainId().c_str(), residueCount);
                         switch (startSS)
                         {
                         default:
@@ -2250,7 +2250,7 @@ void Molecule::MakeSecondaryStructure(bool bRibbon, bool bSchematic)
                         }
                         startSS = currentSS;
                         startRes = prevRes;
-                        Logger::debug("start %s %s %c", startRes->type().c_str(), startRes->name().c_str(), startRes->chain_id());
+                        Logger::debug("start %s %s %s", startRes->type().c_str(), startRes->name().c_str(), startRes->displayChainId().c_str());
                         residueCount = 0;
                     }
                     prevRes = res;
@@ -2258,7 +2258,7 @@ void Molecule::MakeSecondaryStructure(bool bRibbon, bool bSchematic)
                     residueCount++;
                 }
                 endRes = prevRes;
-                Logger::debug("end %s %s %c %d", endRes->type().c_str(), endRes->name().c_str(), endRes->chain_id(), residueCount);
+                Logger::debug("end %s %s %s %d", endRes->type().c_str(), endRes->name().c_str(), endRes->displayChainId().c_str(), residueCount);
                 switch (startSS)
                 {
                 default:

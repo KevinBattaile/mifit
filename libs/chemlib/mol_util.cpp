@@ -1288,140 +1288,58 @@ bool IsWater(const Residue *res)
 
 int IsDna(const Monomer &res)     // does residue have minimal requirements for dna?
 {
-    int found = 0, primefound = 1;
+    int star_found = 0, prime_found = 0;
     for (unsigned int i = 0; i < res.atoms().size(); i++)
     {
-        if (!strcmp(res.atom(i)->name(), "C2*"))
+        const char *name = res.atom(i)->name();
+        if (!strcmp(name, "C2*") || !strcmp(name, "C1*") || !strcmp(name, "O4*")
+            || !strcmp(name, "O3*") || !strcmp(name, "C4*") || !strcmp(name, "C3*"))
         {
-            found++;
+            star_found++;
         }
-        if (!strcmp(res.atom(i)->name(), "C1*"))
+        else if (!strcmp(name, "C2'") || !strcmp(name, "C1'") || !strcmp(name, "O4'")
+                 || !strcmp(name, "O3'") || !strcmp(name, "C4'") || !strcmp(name, "C3'"))
         {
-            found++;
+            prime_found++;
         }
-        if (!strcmp(res.atom(i)->name(), "O4*"))
+        if (star_found >= 5)
         {
-            found++;
+            return 1;
         }
-        if (!strcmp(res.atom(i)->name(), "O3*"))
+        if (prime_found >= 5)
         {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C4*"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C3*"))
-        {
-            found++;
-        }
-        if (found >= 5)
-        {
-            break;
-        }
-        if (!strcmp(res.atom(i)->name(), "C2\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C1\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "O1\'"))
-        {
-            found++;
-            primefound = 2;
-        }
-        if (!strcmp(res.atom(i)->name(), "C4\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C3\'"))
-        {
-            found++;
-        }
-        if (found == 5)
-        {
-            break;
+            return 2;
         }
     }
-    if (found >= 5)
-    {
-        return (primefound);
-    }
-    else
-    {
-        return (0);
-    }
+    return 0;
 }
 
 int IsDna(const Residue &res)     // does residue have minimal requirements for dna?
 {
-    int found = 0, primefound = 1;
+    int star_found = 0, prime_found = 0;
     for (int i = 0; i < res.atomCount(); i++)
     {
-        if (!strcmp(res.atom(i)->name(), "C2*"))
+        const char *name = res.atom(i)->name();
+        if (!strcmp(name, "C2*") || !strcmp(name, "C1*") || !strcmp(name, "O4*")
+            || !strcmp(name, "O3*") || !strcmp(name, "C4*") || !strcmp(name, "C3*"))
         {
-            found++;
+            star_found++;
         }
-        if (!strcmp(res.atom(i)->name(), "C1*"))
+        else if (!strcmp(name, "C2'") || !strcmp(name, "C1'") || !strcmp(name, "O4'")
+                 || !strcmp(name, "O3'") || !strcmp(name, "C4'") || !strcmp(name, "C3'"))
         {
-            found++;
+            prime_found++;
         }
-        if (!strcmp(res.atom(i)->name(), "O4*"))
+        if (star_found >= 5)
         {
-            found++;
+            return 1;
         }
-        if (!strcmp(res.atom(i)->name(), "O3*"))
+        if (prime_found >= 5)
         {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C4*"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C3*"))
-        {
-            found++;
-        }
-        if (found >= 5)
-        {
-            break;
-        }
-        if (!strcmp(res.atom(i)->name(), "C2\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C1\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "O1\'"))
-        {
-            found++;
-            primefound = 2;
-        }
-        if (!strcmp(res.atom(i)->name(), "C4\'"))
-        {
-            found++;
-        }
-        if (!strcmp(res.atom(i)->name(), "C3\'"))
-        {
-            found++;
-        }
-        if (found == 5)
-        {
-            break;
+            return 2;
         }
     }
-    if (found >= 5)
-    {
-        return (primefound);
-    }
-    else
-    {
-        return (0);
-    }
+    return 0;
 }
 
 bool IsAminoAcid(Residue *res)
@@ -1631,6 +1549,25 @@ Residue *residue_from_name(Residue *res, const char *resid, const char c)
         if (!strcmp(resid, res->name().c_str()))
         {
             if (c == (char)(res->chain_id()&255) || c == '*')
+            {
+                return (res);
+            }
+        }
+        res = res->next();
+    }
+    return (NULL);
+}
+
+Residue *residue_from_name(Residue *res, const char *resid, const std::string &chain)
+{
+    while (Monomer::isValid(res))
+    {
+        if (!strcmp(resid, res->name().c_str()))
+        {
+            if (chain == "*" ||
+                res->chain_id_str() == chain ||
+                res->displayChainId("_") == chain ||
+                (chain.size() == 1 && (chain[0] == (char)(res->chain_id() & 255) || (chain[0] == '_' && (char)(res->chain_id() & 255) == ' '))))
             {
                 return (res);
             }

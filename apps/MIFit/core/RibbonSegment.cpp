@@ -108,7 +108,7 @@ bool RibbonSegment::MakeRibbon(Residue *pFirstResidue, int nResidues)
             MIAtom *pAtom = atom_from_name("CA", *pRes[j]);
             if (!pAtom)
             {
-                throw format("no CA atom in residue %s %s %c", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->chain_id());
+                throw format("no CA atom in residue %s %s %s", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->displayChainId().c_str());
             }
             ptca[j][0] = pAtom->x();
             ptca[j][1] = pAtom->y();
@@ -118,7 +118,7 @@ bool RibbonSegment::MakeRibbon(Residue *pFirstResidue, int nResidues)
             pAtom = atom_from_name("C", *pRes[j]);
             if (!pAtom)
             {
-                throw format("no C atom in residue %s %s %c", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->chain_id());
+                throw format("no C atom in residue %s %s %s", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->displayChainId().c_str());
             }
             ptc[j][0] = pAtom->x();
             ptc[j][1] = pAtom->y();
@@ -128,7 +128,7 @@ bool RibbonSegment::MakeRibbon(Residue *pFirstResidue, int nResidues)
             pAtom = atom_from_name("O", *pRes[j]);
             if (!pAtom)
             {
-                throw format("no O atom in residue %s %s %c", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->chain_id());
+                throw format("no O atom in residue %s %s %s", pRes[j]->type().c_str(), pRes[j]->name().c_str(), pRes[j]->displayChainId().c_str());
             }
             pto[j][0] = pAtom->x();
             pto[j][1] = pAtom->y();

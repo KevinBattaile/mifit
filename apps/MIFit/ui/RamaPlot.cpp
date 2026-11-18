@@ -259,8 +259,8 @@ void RamaPlotMgr::handleMouseOver(int id)
         Residue *res = static_cast<Residue*>(points[id].data);
         if (Monomer::isValid(res))
         {
-            char c = (char)res->chain_id()&255;
-            sprintf(buf, "%s%c", res->name().c_str(), c);
+            std::string c = res->displayChainId("");
+            sprintf(buf, "%s%s", res->name().c_str(), c.c_str());
             _gw->graph_labelpoint(id, buf);
             _last_mouseover_id = id;
             changed = true;
@@ -381,8 +381,8 @@ void RamaPlotMgr::GraphResidue(ResidueListIterator prev,
         // print label if in bad region
         if (region != 2)
         {
-            char c = (char)res->chain_id()&255;
-            sprintf(buf, "%s%c", res->name().c_str(), c);
+            std::string c = res->displayChainId("");
+            sprintf(buf, "%s%s", res->name().c_str(), c.c_str());
             _gw->graph_labelpoint(ip, buf);
             //Logger::log("Suspect phi-psi %0.1f %0.1f %s %s\n", x, y, res->type().c_str(), res->name().c_str());
         }
@@ -391,12 +391,12 @@ void RamaPlotMgr::GraphResidue(ResidueListIterator prev,
         if (Monomer::isValid(_focusres))
         {
             if ((strcmp(_focusres->name().c_str(), res->name().c_str()) == 0)
-                && ((res->chain_id()&255) == (_focusres->chain_id()&255)))
+                && (res->displayChainId() == _focusres->displayChainId()))
             {
-                char c = (char)res->chain_id()&255;
-                if (c != ' ')
+                std::string c = res->displayChainId("");
+                if (!c.empty())
                 {
-                    sprintf(buf, ">%s_%s_%c<", res->type().c_str(), res->name().c_str(), c);
+                    sprintf(buf, ">%s_%s_%s<", res->type().c_str(), res->name().c_str(), c.c_str());
                 }
                 else
                 {

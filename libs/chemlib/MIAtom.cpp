@@ -379,21 +379,17 @@ bool MIAtom::MIIsMainChainDNAAtom(const MIAtom *atom)
 
 bool MIAtom::MIIsSideChainDNAAtom(const MIAtom *atom)
 {
-    if (atom->name_[strlen(atom->name_)-1] == '*')
+    size_t len = strlen(atom->name_);
+    if (len > 0 && (atom->name_[len - 1] == '*' || atom->name_[len - 1] == '\''))
     {
-        return 0;
+        return false;
     }
-    if (!strcmp(atom->name_, "P"))
+    if (!strcmp(atom->name_, "P")
+        || !strcmp(atom->name_, "O1P") || !strcmp(atom->name_, "O2P")
+        || !strcmp(atom->name_, "OP1") || !strcmp(atom->name_, "OP2")
+        || !strcmp(atom->name_, "OP3"))
     {
-        return 0;
-    }
-    if (!strcmp(atom->name_, "O1P"))
-    {
-        return 0;
-    }
-    if (!strcmp(atom->name_, "O2P"))
-    {
-        return 0;
+        return false;
     }
     return true;
 }

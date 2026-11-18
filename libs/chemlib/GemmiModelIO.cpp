@@ -226,7 +226,6 @@ Residue *LoadGemmiStructure(const std::string &path,
                 ++atom_serial;
                 int serial = (gat.serial > 0) ? gat.serial : atom_serial;
                 atom->setAtomnumber(serial);
-                atom->setMass(serial);
                 atom->setSymmop(0);
                 atom->setCharge(static_cast<float>(gat.charge));
                 atom->set_formal_charge(static_cast<int>(gat.charge));
@@ -268,6 +267,7 @@ Residue *LoadGemmiStructure(const std::string &path,
                 seq_str = "1";
             curr_res->setName(seq_str);
             curr_res->setType(gres.name);
+            curr_res->set_chain_id_str(chain.name.empty() ? std::string(" ") : chain.name);
             curr_res->set_chain_id(static_cast<unsigned short>(bonding_group));
             curr_res->setSecstr('U');
 
@@ -307,7 +307,7 @@ Residue *LoadGemmiStructure(const std::string &path,
 
         for (const gemmi::Connection &conn : st.connections)
         {
-            if (conn.asu == gemmi::Asu::Different || conn.type == gemmi::Connection::Hydrog)
+            if (conn.asu == gemmi::Asu::Different || (conn.type != gemmi::Connection::Covale && conn.type != gemmi::Connection::Disulf))
                 continue;
 
             gemmi::const_CRA cra1 = model.find_cra(conn.partner1, true);

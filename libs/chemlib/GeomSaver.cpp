@@ -45,9 +45,9 @@ unsigned int GeomSaver::Save(Residue *res, int nres, MIMoleculeBase *model)
         lastres = resIter;
     }
     char buf[1024];
-    sprintf(buf, "%s_%s%c to %s_%s%c, %d atoms, Model: %s",
-            firstres->type().c_str(), firstres->name().c_str(), (char)(firstres->chain_id()&255),
-            lastres->type().c_str(), lastres->name().c_str(), (char)(lastres->chain_id()&255),
+    sprintf(buf, "%s_%s%s to %s_%s%s, %zu atoms, Model: %s",
+            firstres->type().c_str(), firstres->name().c_str(), firstres->displayChainId().c_str(),
+            lastres->type().c_str(), lastres->name().c_str(), lastres->displayChainId().c_str(),
             Save->size(), model->compound.c_str());
     SaveSets[token].Title = buf;
     return unique();

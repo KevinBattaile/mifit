@@ -295,6 +295,7 @@ static void fixname(std::string &name)
 {
     char buf[MAXNAME];
     strncpy(buf, name.c_str(), MAXNAME);
+    buf[MAXNAME - 1] = '\0';
     fixname(buf);
     name = std::string(buf);
 }
@@ -311,17 +312,12 @@ void Residue::fixnames(Residue *res)
 
 const std::string Residue::liststring(Residue *res)
 {
-    char chainid;
     int chainno;
     std::string buff;
-    chainid = (char)(res->chain_id() & 255);
-    if (chainid == ' ')
-    {
-        chainid = '_';
-    }
+    std::string chainid = res->displayChainId("_");
     chainno = res->chain_id()/256;
-    buff = format("%s %s %c %d",
-                  res->type().c_str(), res->name().c_str(), chainid, chainno);
+    buff = format("%s %s %s %d",
+                  res->type().c_str(), res->name().c_str(), chainid.c_str(), chainno);
     if ((res->linkage_type()&NTERMINUS) && (res->linkage_type()&PEPTIDE))
     {
         buff += " Nter";

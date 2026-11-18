@@ -373,6 +373,33 @@ void MIMolDictionary::RestrainEnds(Residue *RefiRes, int nRefiRes)
     }
 }
 
+static bool AtomNameMatches(const char *a, const char *b)
+{
+    if (strcmp(a, b) == 0)
+    {
+        return true;
+    }
+    if ((strcmp(a, "O1P") == 0 && strcmp(b, "OP1") == 0)
+        || (strcmp(a, "OP1") == 0 && strcmp(b, "O1P") == 0)
+        || (strcmp(a, "O2P") == 0 && strcmp(b, "OP2") == 0)
+        || (strcmp(a, "OP2") == 0 && strcmp(b, "O2P") == 0)
+        || (strcmp(a, "O3P") == 0 && strcmp(b, "OP3") == 0)
+        || (strcmp(a, "OP3") == 0 && strcmp(b, "O3P") == 0))
+    {
+        return true;
+    }
+    while (*a && *b)
+    {
+        if (*a != *b && !((*a == '*' && *b == '\'') || (*a == '\'' && *b == '*')))
+        {
+            return false;
+        }
+        ++a;
+        ++b;
+    }
+    return *a == '\0' && *b == '\0';
+}
+
 int MIMolDictionary::AreBonded(const char *restype, MIAtom *atom1, MIAtom *atom2, Bond &bond)
 {
     // returns 0 if not bonded, -1 if not in the dictionary but bonded by distance
@@ -396,8 +423,8 @@ int MIMolDictionary::AreBonded(const char *restype, MIAtom *atom1, MIAtom *atom2
         {
             b1 = (*dbonds)[i].getAtom1()->name();
             b2 = (*dbonds)[i].getAtom2()->name();
-            if ((strcmp(b1, atom1->name()) == 0 && strcmp(b2, atom2->name()) == 0)
-                || (strcmp(b1, atom2->name()) == 0 && strcmp(b2, atom1->name()) == 0))
+            if ((AtomNameMatches(b1, atom1->name()) && AtomNameMatches(b2, atom2->name()))
+                || (AtomNameMatches(b1, atom2->name()) && AtomNameMatches(b2, atom1->name())))
             {
                 // check to see if deleted by checking for a negative tolerance
                 d = (*dbonds)[i].tolerance;

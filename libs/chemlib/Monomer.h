@@ -122,6 +122,29 @@ namespace chemlib
         void set_chain_id(unsigned short i)
         {
             chain_id_ = i;
+            char c = (char)(i & 255);
+            if (chain_id_str_.empty() || chain_id_str_[0] != c)
+            {
+                chain_id_str_ = std::string(1, c);
+            }
+        }
+        const std::string &chain_id_str() const
+        {
+            return chain_id_str_;
+        }
+        void set_chain_id_str(const std::string &s)
+        {
+            chain_id_str_ = s.empty() ? std::string(" ") : s;
+            char c = chain_id_str_[0];
+            chain_id_ = static_cast<unsigned short>((chain_id_ & 0xFF00) | (static_cast<unsigned char>(c)));
+        }
+        std::string displayChainId(const char *spaceReplacement = " ") const
+        {
+            if (chain_id_str_.empty() || chain_id_str_ == " ")
+            {
+                return spaceReplacement ? std::string(spaceReplacement) : std::string();
+            }
+            return chain_id_str_;
         }
         char secstr() const
         {
@@ -185,6 +208,7 @@ namespace chemlib
         std::string name_;
         unsigned short linkage_type_;
         unsigned short chain_id_;
+        std::string chain_id_str_;
         char secstr_;
         char name1_;
         unsigned int seqpos_;

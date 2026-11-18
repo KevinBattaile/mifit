@@ -268,7 +268,7 @@ std::string ATOMLABEL::labelString(const Monomer *res, const MIAtom *atom, int s
     const std::string &r = res->name();
     const std::string &a = atom->name();
     char l = atom->altloc();
-    char c = (char)(res->chain_id()&255);
+    std::string c = res->displayChainId("");
     char s;
 
     if (t.length() == 0 && r.length() == 0 && a.length() == 0)
@@ -281,15 +281,15 @@ std::string ATOMLABEL::labelString(const Monomer *res, const MIAtom *atom, int s
     {
     default:
     case 0:
-        if (c != ' ')
+        if (!c.empty())
         {
             if (l == ' ')
             {
-                sprintf(id, "%s %s %c %s", t.c_str(), r.c_str(), c, a.c_str());
+                sprintf(id, "%s %s %s %s", t.c_str(), r.c_str(), c.c_str(), a.c_str());
             }
             else
             {
-                sprintf(id, "%s %s %c %s_%c", t.c_str(), r.c_str(), c, a.c_str(), l);
+                sprintf(id, "%s %s %s %s_%c", t.c_str(), r.c_str(), c.c_str(), a.c_str(), l);
             }
         }
         else
@@ -303,9 +303,9 @@ std::string ATOMLABEL::labelString(const Monomer *res, const MIAtom *atom, int s
         }
         break;
     case 1:
-        if (c != ' ')
+        if (!c.empty())
         {
-            sprintf(id, "%s %s %c", t.c_str(), r.c_str(), c);
+            sprintf(id, "%s %s %s", t.c_str(), r.c_str(), c.c_str());
         }
         else
         {
@@ -333,9 +333,9 @@ std::string ATOMLABEL::labelString(const Monomer *res, const MIAtom *atom, int s
         break;
     case 6:
         s = singleletter(t.c_str());
-        if (c != ' ')
+        if (!c.empty())
         {
-            sprintf(id, "%c%s %c", s, r.c_str(), c);
+            sprintf(id, "%c%s %s", s, r.c_str(), c.c_str());
         }
         else
         {

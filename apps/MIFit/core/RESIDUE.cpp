@@ -131,14 +131,14 @@ string resid(const Residue *res)
     string id;
     if (res != NULL)
     {
-        char c = (char)(res->chain_id()&255);
-        if (c == ' ')
+        std::string c = res->displayChainId("");
+        if (c.empty())
         {
             id = format("%s %s", res->type().c_str(), res->name().c_str());
         }
         else
         {
-            id = format("%s %s %c", res->type().c_str(), res->name().c_str(), c);
+            id = format("%s %s %s", res->type().c_str(), res->name().c_str(), c.c_str());
         }
     }
     return id;
@@ -679,10 +679,9 @@ int order_ends(Residue* &res1, Residue* &res2, Residue *res)
 
 const string chainstring(const Residue *res)
 {
-    char chainid;
     int chainno;
     static string buff;
-    chainid = (char)(res->chain_id() & 255);
+    std::string chainid = res->displayChainId("_");
     const Residue *res2 = res;
     const Residue *r = res;
     while (r != NULL)
@@ -696,10 +695,6 @@ const string chainstring(const Residue *res)
             break;
         }
         r = r->next();
-    }
-    if (chainid == ' ')
-    {
-        chainid = '_';
     }
     chainno = res->chain_id()/256;
     if (res->linkage_type()&PEPTIDE || res->linkage_type()&NUCLEIC)

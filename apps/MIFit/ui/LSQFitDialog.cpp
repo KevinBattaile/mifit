@@ -349,8 +349,7 @@ void LSQFitDialog::ListSource()
             if (res->chain_id() != chainid)
             {
                 chainid = res->chain_id();
-                char cid = (char) chainid;
-                chains->addItem(QString(cid));
+                chains->addItem(QString::fromStdString(res->displayChainId(" ")));
             }
             list->addItem(resid(res).c_str());
             res = res->next();

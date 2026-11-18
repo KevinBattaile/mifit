@@ -4250,12 +4250,12 @@ void MIGLWidget::OnFitLsqsuperpose()
         return;
 
     ResidueListIterator res = source->residuesBegin();
-    char m_chain = res->getChainId();
+    std::string m_chain = res->displayChainId(" ");
     float tx, ty, tz, x, y, z;
     bool chain_only = data.applyToChain;
     if (chain_only)
     {
-        m_chain = data.chainId[0];
+        m_chain = data.chainId;
     }
     // save matrix for later
     LSQMatrix lsq_matrix;
@@ -4286,7 +4286,7 @@ void MIGLWidget::OnFitLsqsuperpose()
     }
     for (; res != source->residuesEnd(); ++res)
     {
-        if (chain_only && res->getChainId() != m_chain)
+        if (chain_only && res->displayChainId(" ") != m_chain && std::string(1, res->getChainId()) != m_chain)
         {
             continue;
         }
@@ -9238,7 +9238,7 @@ void MIGLWidget::WriteStack(CArchive &ar)
     Residue *res;
     MIAtom *a;
     int i;
-    char buf2[512], aname[chemlib::MAXATOMNAME], rname[MAXNAME], chainid;
+    char buf2[512], aname[chemlib::MAXATOMNAME], rname[MAXNAME];
     while (!AtomStack->empty())
     {
         AtomStack->Pop(a, res, node);
@@ -9247,13 +9247,11 @@ void MIGLWidget::WriteStack(CArchive &ar)
             sprintf(buf2, "molecule %s\n", node->pathname.c_str());
             ar.Write(buf2, strlen(buf2));
         }
-        strcpy(aname, a->name());
-        strcpy(rname, res->name().c_str());
-        chainid = (char)(res->chain_id()&255);
-        if (chainid == ' ')
-        {
-            chainid = '*';
-        }
+        strncpy(aname, a->name(), chemlib::MAXATOMNAME);
+        aname[chemlib::MAXATOMNAME - 1] = '\0';
+        strncpy(rname, res->name().c_str(), MAXNAME);
+        rname[MAXNAME - 1] = '\0';
+        std::string chainid = res->displayChainId("*");
         for (i = 0; i < (int)strlen(aname); i++)
         {
             if (aname[i] == ' ')
@@ -9268,7 +9266,7 @@ void MIGLWidget::WriteStack(CArchive &ar)
                 rname[i] = '_';
             }
         }
-        sprintf(buf2, "atom %3s %3s %c %3s %6.2f %6.2f\n", aname, rname, chainid,
+        sprintf(buf2, "atom %s %s %s %s %6.2f %6.2f\n", aname, rname, chainid.c_str(),
                 res->type().c_str(), (float)a->BValue(), (float)a->occ());
         ar.Write(buf2, strlen(buf2));
         lastnode = node;
@@ -9286,7 +9284,7 @@ void MIGLWidget::ReadStack(const char *pathname, bool append)
     if ((f = fopen(pathname, "r")) != NULL)
     {
         char buf[512], buf2[512];
-        char rname[20], chainid, aname[20];
+        char rname[20], chainid[20], aname[20];
         MIAtom *a;
         res = NULL;
         if (append == false)
@@ -9340,12 +9338,14 @@ void MIGLWidget::ReadStack(const char *pathname, bool append)
             {
                 if (node != NULL)
                 {
-                    sscanf(buf, "%*s%s%s%c", aname, rname, &chainid);
-                    if ((res = residue_from_name(node->residuesBegin(), rname, chainid)) != NULL)
+                    if (sscanf(buf, "%*s%19s%19s%19s", aname, rname, chainid) == 3)
                     {
-                        if ((a = atom_from_name(aname, *res)) != NULL)
+                        if ((res = residue_from_name(node->residuesBegin(), rname, std::string(chainid))) != NULL)
                         {
-                            AtomStack->Push(a, res, node);
+                            if ((a = atom_from_name(aname, *res)) != NULL)
+                            {
+                                AtomStack->Push(a, res, node);
+                            }
                         }
                     }
                 }

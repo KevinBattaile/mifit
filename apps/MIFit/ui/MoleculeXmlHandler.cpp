@@ -98,6 +98,8 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
             residue->set_linkage_type(MIDDLE);
         }
         atoms.clear();
+        std::string chain_str;
+        bool has_chain_str = false;
         for (int i = 0; i < attributes.length(); i++)
         {
             if (attributes.localName(i) == "name")
@@ -111,6 +113,11 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
             if (attributes.localName(i) == "chain")
             {
                 residue->set_chain_id((short unsigned int)atoi( attributes.value(i).toStdString().c_str() ));
+            }
+            if (attributes.localName(i) == "chain_str")
+            {
+                chain_str = attributes.value(i).toStdString();
+                has_chain_str = true;
             }
             if (attributes.localName(i) == "secstr")
             {
@@ -131,6 +138,12 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
                 strcpy(buf, attributes.value(i).toStdString().c_str());
                 residue->setName1(buf[0]);
             }
+        }
+        if (has_chain_str)
+        {
+            unsigned short cid = residue->chain_id();
+            residue->set_chain_id_str(chain_str);
+            residue->set_chain_id(cid);
         }
     }
 

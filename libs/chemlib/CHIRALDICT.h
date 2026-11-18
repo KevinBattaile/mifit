@@ -94,6 +94,7 @@ namespace chemlib
             else
             {
                 strncpy(name[index], atom_name, MAXATOMNAME);
+                name[index][MAXATOMNAME - 1] = '\0';
                 return true;
             }
         }

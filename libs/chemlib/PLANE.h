@@ -61,6 +61,7 @@ namespace chemlib
             if (natoms + 1 <= MAXPLANE)
             {
                 strncpy(name[natoms], atom_name, MAXNAME);
+                name[natoms][MAXNAME - 1] = '\0';
                 natoms++;
                 return true;
             }

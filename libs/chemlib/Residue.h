@@ -13,7 +13,9 @@
 namespace chemlib
 {
 
-#define MAXNAME 6
+#ifndef MAXNAME
+#define MAXNAME 12
+#endif
 
     class Residue;
 

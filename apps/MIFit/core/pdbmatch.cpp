@@ -307,8 +307,6 @@ static MIAtom *scan_atom(const char *linebuf)
     atom->setBValue((float)Bvalue);
     atom->set_radius_type(0);
     atom->setType(MIAtom::MIGetAtomTypeFromName(atom->name()));
-    atom->setMass(atoi(column(7)));   // temporary storage for atomnumber
-    // used for figuring CONECT info later on
     char chainid = *column(22);
     atom->setAltloc(linebuf[16]);
     strncpy(abuf, column(13), 2);

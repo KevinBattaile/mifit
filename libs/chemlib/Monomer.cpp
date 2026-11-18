@@ -40,6 +40,7 @@ bool Monomer::isValid(const Monomer *res)
 Monomer::Monomer()
     : linkage_type_(0),
       chain_id_(' '),
+      chain_id_str_(" "),
       secstr_('U'),
       name1_(0),
       seqpos_(0),
@@ -92,6 +93,7 @@ Monomer&Monomer::operator=(const Monomer &rhs)
     name_ = rhs.name_;
     linkage_type_ = rhs.linkage_type_;
     chain_id_ = rhs.chain_id_;
+    chain_id_str_ = rhs.chain_id_str_;
     secstr_ = rhs.secstr_;
     name1_ = rhs.name1_;
     seqpos_ = rhs.seqpos_;

@@ -212,6 +212,7 @@ namespace chemlib
 // @param chain the chain id of the residue such as "A".  Use "*" to match a space.
 //@}
     Residue *residue_from_name(Residue *res, const char *name, const char chain);
+    Residue *residue_from_name(Residue *res, const char *name, const std::string &chain);
 
 //@{
 // Given a linked list of residues and an atom, returns the residue containing that atom.

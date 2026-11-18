@@ -221,12 +221,12 @@ Residue *LoadPDB(FILE *f, std::vector<Bond> *connects)
             atom->setBValue((float)Bvalue);
             atom->set_radius_type(0);
             atom->setType(MIAtom::MIGetAtomTypeFromName(atom->name()));
-            atom->setMass(atoi(column(7))); // temporary storage for atomnumber
-            // used for figuring CONECT info later on
+            int parsed_serial = atoi(column(7));
+            int atom_serial = (parsed_serial > 0) ? parsed_serial : static_cast<int>(n + 1);
             chainid = *column(22);
             atom->setAltloc(linebuf[16]);
             atom->setAtomicnumber(Atomic_Number(column(13)));
-            atom->setAtomnumber(n + 1);
+            atom->setAtomnumber(atom_serial);
             atom->setSymmop(0);
             atom->setCharge(0);
             atom->set_formal_charge(0);
@@ -288,7 +288,7 @@ Residue *LoadPDB(FILE *f, std::vector<Bond> *connects)
             {
                 int an;
                 sscanf(linebuf, "%*s%d", &an);
-                if (an == atom->mass())
+                if (an == atom->atomnumber())
                 {
                     atom->newAnisotropicity();
                     sscanf(column(29), "%7d%7d%7d%7d%7d%7d", &U11, &U22, &U33, &U12, &U13, &U23);
@@ -345,7 +345,7 @@ Residue *LoadPDB(FILE *f, std::vector<Bond> *connects)
                 found = 0;
                 for (ja = 0; ja < n; ja++)
                 {
-                    if (atoms[ja]->mass() == ia[0])
+                    if (atoms[ja]->atomnumber() == ia[0])
                     {
                         found = 1;
                         a1 = atoms[ja];
@@ -374,7 +374,7 @@ Residue *LoadPDB(FILE *f, std::vector<Bond> *connects)
                     // search for these atoms numbers in atom list
                     for (ja = 0; ja < n; ja++)
                     {
-                        if (atoms[ja]->mass() == ia[i])
+                        if (atoms[ja]->atomnumber() == ia[i])
                         {
                             // found it! make connect
                             connect.setAtom1(a1);
@@ -480,13 +480,13 @@ bool SavePDB(FILE *fp, Residue *res, Bond *Connects, int nConnects, bool mark_en
                         (float)residue->atom(i)->occ(), (float)residue->atom(i)->BValue(), atomicname);
             }
             fwrite(buf, sizeof(char), strlen(buf), fp);
-            // temporarily save the atom number in mass for CONECTs
-            residue->atom(i)->setMass(n);
+            // save the atom number for CONECTs
+            residue->atom(i)->setAtomnumber(n);
             if (residue->atom(i)->hasAnisotropicity())
             {
                 MIAtom *a = residue->atom(i);
                 fprintf(fp, "ANISOU");
-                fprintf(fp, "%5d", a->mass());
+                fprintf(fp, "%5d", a->atomnumber());
                 if (strlen(residue->atom(i)->name()) < 4 && !(isdigit(residue->atom(i)->name()[0]))
                     && atomicname[0] == ' ')
                 {
@@ -527,8 +527,8 @@ bool SavePDB(FILE *fp, Residue *res, Bond *Connects, int nConnects, bool mark_en
     {
         for (int i = 0; i < nConnects; i++)
         {
-            sprintf(buf, "CONECT%5d%5d\n", Connects[i].getAtom1()->mass(),
-                    Connects[i].getAtom2()->mass());
+            sprintf(buf, "CONECT%5d%5d\n", Connects[i].getAtom1()->atomnumber(),
+                    Connects[i].getAtom2()->atomnumber());
             fwrite(buf, sizeof(char), strlen(buf), fp);
         }
     }

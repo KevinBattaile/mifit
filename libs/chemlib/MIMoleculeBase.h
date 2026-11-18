@@ -213,6 +213,7 @@ namespace chemlib
 
         void setResidueNames(std::vector<Residue*> &residues, const std::string &name);
         void setChainId(Residue *chain, char c);
+        void setChainId(Residue *chain, const std::string &chain_str);
         void renumberChain(Residue *chain, int n);
 
 
