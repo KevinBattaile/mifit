@@ -1,6 +1,8 @@
 #include <vector>
 #include <algorithm>
-
+#include <QCoreApplication>
+#include <QDir>
+#include <QFileInfo>
 #include <math/mathlib.h>
 
 #include <util/system.h>
@@ -134,38 +136,61 @@ MIMolDictionary::MIMolDictionary()
     cres->setType(std::string("CONST"));
     cres->setName(std::string("RAINT"));
 }
-
 bool MIMolDictionary::LoadDefaultDictionary(const std::string &dictionary,
                                             const std::string &homedir)
 {
     FILE *fp = NULL;
-    if (dictionary.size() != 0)
+    std::string activeDict = dictionary;
+
+    if (!activeDict.empty()) {
+        fp = fopen(activeDict.c_str(), "r");
+    }
+
+    // --- QT6 DYNAMIC PATH RESOLUTION ---
+    if (!fp) {
+        QString filename = QFileInfo(QString::fromStdString(activeDict)).fileName();
+        if (filename.isEmpty()) filename = "monomers.cif";
+
+        QString execDir = QCoreApplication::applicationDirPath();
+        QStringList searchPaths = {
+            QDir(execDir).filePath("../data/" + filename),
+            QDir(execDir).filePath("data/" + filename),
+            QDir(execDir).filePath(filename)
+        };
+
+        for (const QString& searchPath : searchPaths) {
+            fp = fopen(searchPath.toStdString().c_str(), "r");
+            if (fp) {
+                activeDict = searchPath.toStdString();
+                break;
+            }
+        }
+    }
+    // -----------------------------------
+
+    if (fp)
     {
-        fp = fopen(dictionary.c_str(), "r");
-        if (fp)
+        std::string path, name, ext;
+        MISplitPath(activeDict, &path, &name, &ext);
+        name = MIToLower(name);
+        if (name.find("allh") != std::string::npos)
         {
-            std::string path, name, ext;
-            MISplitPath(dictionary, &path, &name, &ext);
-            name = MIToLower(name);
-            if (name.find("allh") != std::string::npos)
-            {
-                HLevel = DictionaryHLevel::All;
-            }
-            else if (name.find("polarh") != std::string::npos)
-            {
-                HLevel = DictionaryHLevel::All;
-            }
-            else if (name.find("noh") != std::string::npos)
-            {
-                HLevel = DictionaryHLevel::NoHydrogens;
-            }
+            HLevel = DictionaryHLevel::All;
         }
-        else
+        else if (name.find("polarh") != std::string::npos)
         {
-            Logger::message("Unable to find dictionary - Insert, replace and refine functions will not work\n"
-                            "You can set the dictionary using File/Preferences...");
-            return false;
+            HLevel = DictionaryHLevel::All;
         }
+        else if (name.find("noh") != std::string::npos)
+        {
+            HLevel = DictionaryHLevel::NoHydrogens;
+        }
+    }
+    else
+    {
+        Logger::message("Unable to find dictionary - Insert, replace and refine functions will not work\n"
+                        "You can set the dictionary using File/Preferences...");
+        return false;
     }
     if (fp)
     {
