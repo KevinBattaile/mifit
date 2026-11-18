@@ -35,7 +35,10 @@ std::string format_arg_list(const char *fmt, va_list args)
         }
         buffer = new char[length + 1];
         memset(buffer, 0, length + 1);
-        result = vsnprintf(buffer, length, fmt, args);
+        va_list args_copy;
+        va_copy(args_copy, args);
+        result = vsnprintf(buffer, length, fmt, args_copy);
+        va_end(args_copy);
 #ifdef VSNPRINTF_NEG_TRUNC_CODE
         // vsnprintf returns negative value indicating truncation
         length *= 2;

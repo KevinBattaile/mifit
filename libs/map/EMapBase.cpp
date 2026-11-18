@@ -1157,7 +1157,7 @@ float EMapBase::CalcRMS()
     {
         predictedAsDifferenceMap = true;
     }
-    Logger::debug("map points: %u neg, %u pos, %u total", negativePoints, (map_points.size() - negativePoints), map_points.size());
+    Logger::debug("map points: %u neg, %zu pos, %zu total", negativePoints, (map_points.size() - negativePoints), map_points.size());
     Logger::log("map points: ratio %0.3f, diff map %s", mapPointRatio, predictedAsDifferenceMap ? "true" : "false");
     rms = (float)sqrt(sum/(double)map_points.size());
     return rms;
@@ -2709,7 +2709,7 @@ end:
     mapheader->resmin = 0.5F/refls_stholmax;
     mapName = pathname;
     pathName = pathname;
-    Logger::debug("Read %d reflections", refls.size());
+    Logger::debug("Read %zu reflections", refls.size());
     return refls.size();
 }
 
@@ -5210,7 +5210,7 @@ long EMapBase::Reindex(int index_mat[][3])
         refls[i].ind[2] = lr;
         nindex++;
     }
-    Logger::log("Re-indexed %d reflections by:", nindex);
+    Logger::log("Re-indexed %ld reflections by:", nindex);
     Logger::log("hnew = h*%2d + k*%2d + l*%2d\n", index_mat[0][0], index_mat[1][0], index_mat[2][0]);
     Logger::log("knew = h*%2d + k*%2d + l*%2d\n", index_mat[0][1], index_mat[1][1], index_mat[2][1]);
     Logger::log("lnew = h*%2d + k*%2d + l*%2d\n", index_mat[0][2], index_mat[1][2], index_mat[2][2]);

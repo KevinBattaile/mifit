@@ -278,14 +278,16 @@ static void initializeFileDialog()
     if (fileDialog == NULL)
     {
         fileDialog = new QFileDialog(0, "Open File(s)", "",
-                                     "Recognized files (*.mlw *.pdb *.mtz *.phs *.fcf *.cif *.map *.py);;"
+                                     "Recognized files (*.mlw *.pdb *.ent *.cif *.mmcif *.cif.gz *.mmcif.gz *.pdb.gz *.mtz *.phs *.fcf *.map *.py);;"
                                      "MIFit session files (*.mlw);;"
-                                     "PDB files (*.pdb);;"
+                                     "Coordinate files (*.pdb *.ent *.cif *.mmcif *.cif.gz *.mmcif.gz *.pdb.gz);;"
+                                     "PDB files (*.pdb *.ent *.pdb.gz);;"
+                                     "mmCIF files (*.cif *.mmcif *.cif.gz *.mmcif.gz);;"
                                      "MTZ files (*.mtz);;"
                                      "Phase files (*.phs);;"
                                      "FCF files (*.fcf);;"
 //        "Scalepack files (*.sca);;"
-                                     "CIF files (*.cif);;"
+                                     "CIF files (*.cif *.mmcif);;"
 //        "Reflection files (*.ref);;"
                                      "Map files (*.map);;"
                                      "Python scripts (*.py);;"
@@ -1047,17 +1049,38 @@ void MIMainWindow::createDockWindows()
 
 static bool is_valid_extension(const char *ext)
 {
-    return (strcmp(ext, ".pdb") == 0
-            || strcmp(ext, ".mlw") == 0
-            || strcmp(ext, ".mtz") == 0
-            || strcmp(ext, ".phs") == 0
-            || strcmp(ext, ".fcf") == 0
+    return (strcasecmp(ext, ".pdb") == 0
+            || strcasecmp(ext, ".ent") == 0
+            || strcasecmp(ext, ".mmcif") == 0
+            || strcasecmp(ext, ".gz") == 0
+            || strcasecmp(ext, ".mlw") == 0
+            || strcasecmp(ext, ".mtz") == 0
+            || strcasecmp(ext, ".phs") == 0
+            || strcasecmp(ext, ".fcf") == 0
             || // we no longer support these extensions b/c their readers are broken
                // || (strcmp(ext, ".sca") == 0)
                // || (strcmp(ext, ".ref") == 0)
-            strcmp(ext, ".cif") == 0
-            || strcmp(ext, ".map") == 0
-            || strcmp(ext, ".py") == 0);
+            strcasecmp(ext, ".cif") == 0
+            || strcasecmp(ext, ".map") == 0
+            || strcasecmp(ext, ".py") == 0);
+}
+
+bool MIMainWindow::isPhaseFile(const std::string &fname)
+{
+    const char *ext = file_extension(fname.c_str());
+    if (strcasecmp(ext, ".mtz") == 0 ||
+        strcasecmp(ext, ".phs") == 0 ||
+        strcasecmp(ext, ".fcf") == 0)
+    {
+        return true;
+    }
+    if (strcasecmp(ext, ".cif") == 0 ||
+        strcasecmp(ext, ".mmcif") == 0 ||
+        strcasecmp(ext, ".gz") == 0)
+    {
+        return chemlib::IsCifReflectionFile(fname);
+    }
+    return false;
 }
 
 

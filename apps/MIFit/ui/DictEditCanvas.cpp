@@ -2714,7 +2714,7 @@ void DictEditCanvas::UpdateChirals()
             }
             else
             {
-                Logger::log("Couldn't figure out who belongs to who! %d: 0x%x 0x%x 0x%x", ctr, i->center, k->getAtom1(), k->getAtom2());
+                Logger::log("Couldn't figure out who belongs to who! %d: %p %p %p", ctr, (void*)i->center, (void*)k->getAtom1(), (void*)k->getAtom2());
             }
         }
         i->setAtom1(ary[0]);

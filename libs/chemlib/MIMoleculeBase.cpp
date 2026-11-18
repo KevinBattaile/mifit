@@ -6,6 +6,7 @@
 #include "MIMoleculeBase.h"
 
 #include "PDB.h"
+#include "GemmiModelIO.h"
 #include "mol_util.h"
 
 #include "MIMolIOBase.h"
@@ -1006,17 +1007,25 @@ void MIMoleculeBase::FixAtomicNumbers()
 
 bool MIMoleculeBase::Revert(const char *pathname)
 {
-    FILE *fp = fopen(pathname, "r");
-    if (fp == NULL)
-    {
-        std::string s("Molecule::Revert:Can't open file: ");
-        s += pathname;
-        Logger::message(s);
-        return false;
-    }
     std::vector<Bond> connct;
-    Residue *newlist = LoadPDB(fp, &connct);
-    fclose(fp);
+    Residue *newlist = NULL;
+    if (IsGemmiCoordinateFile(pathname))
+    {
+        newlist = LoadGemmiStructure(pathname, &connct);
+    }
+    else
+    {
+        FILE *fp = fopen(pathname, "r");
+        if (fp == NULL)
+        {
+            std::string s("Molecule::Revert:Can't open file: ");
+            s += pathname;
+            Logger::message(s);
+            return false;
+        }
+        newlist = LoadPDB(fp, &connct);
+        fclose(fp);
+    }
     if (newlist == NULL)
     {
         return false;

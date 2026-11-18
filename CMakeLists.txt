@@ -11,6 +11,17 @@ set(CMAKE_AUTORCC ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network Core5Compat QuickWidgets PrintSupport)
 find_package(OpenGL REQUIRED)
 
+find_package(gemmi CONFIG QUIET)
+if(NOT gemmi_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        gemmi
+        GIT_REPOSITORY https://github.com/project-gemmi/gemmi.git
+        GIT_TAG        v0.6.5
+    )
+    FetchContent_MakeAvailable(gemmi)
+endif()
+
 if(MSVC)
   add_compile_definitions(_CRT_SECURE_NO_DEPRECATE _CRT_NONSTDC_NO_DEPRECATE)
 else()
@@ -107,6 +118,8 @@ add_library(chemlib STATIC
     libs/chemlib/Dictionary.h
     libs/chemlib/FirstToken.cpp
     libs/chemlib/FirstToken.h
+    libs/chemlib/GemmiModelIO.cpp
+    libs/chemlib/GemmiModelIO.h
     libs/chemlib/GeomSaver.cpp
     libs/chemlib/GeomSaver.h
     libs/chemlib/Ligand.cpp
@@ -172,7 +185,7 @@ add_library(chemlib STATIC
     libs/chemlib/valence.h
 )
 target_include_directories(chemlib PUBLIC ${MIFIT_INCLUDE_DIRS} libs/chemlib)
-target_link_libraries(chemlib PUBLIC mimath miutil Qt6::Core)
+target_link_libraries(chemlib PUBLIC mimath miutil Qt6::Core gemmi::gemmi_cpp)
 
 # conflib
 add_library(conflib STATIC

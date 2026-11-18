@@ -81,7 +81,7 @@ void EMapBase::Contour(float center[3], MIAtomList *current)
         }
     }
     SetChanged(false);
-    Logger::log("Contoured %d edges", edges.size());
+    Logger::log("Contoured %zu edges", edges.size());
     map_center[0] = center[0];
     map_center[1] = center[1];
     map_center[2] = center[2];

@@ -11065,7 +11065,7 @@ void MIGLWidget::OnContourListFile()
             if (emap->Visible())
             {
                 std::vector<PLINE> &lines = emap->edges;
-                Logger::debug("map %d: Writing %d lines", mapNumber, lines.size());
+                Logger::debug("map %d: Writing %zu lines", mapNumber, lines.size());
                 std::vector<PLINE>::iterator line = lines.begin();
                 while (line != lines.end())
                 {
@@ -11439,37 +11439,102 @@ bool MIGLWidget::OnOpenDocument(const std::string &path)
 bool MIGLWidget::LoadPDBFile(const char *pathname)
 {
     bool needscoloring = true;
-    Residue *reslist;
-    //std::deque<MIAtom> *atoms= new std::deque<MIAtom>;
+    Residue *reslist = NULL;
     std::vector<Bond> connects;
-    std::string compound;
-    std::unique_ptr<io> ioObj(io::defaultIo());
-    io &file = *ioObj;
-    if (!file.open(pathname, "r"))
+    std::string compound = pathname;
+
+    if (chemlib::IsGemmiCoordinateFile(pathname))
     {
-        std::string s("MIGLWidget::LoadPDBFile:Can't open file: ");
-        s += pathname;
-        Logger::message(s);
-        return false;
-    }
-    compound = pathname;
-    if (IsXMLMolecule(file))
-    {
-        needscoloring = false;
-        if (LoadXMLMolecule(pathname, 0) == false)
+        chemlib::GemmiStructureMetadata meta;
+        reslist = chemlib::LoadGemmiStructure(pathname, &connects, &meta);
+        if (reslist == NULL)
         {
-            file.close();
             return false;
         }
+        Bond *edges = connects.empty() ? NULL : &connects[0];
+        Molecule *mol = new Molecule(reslist, compound, NULL, edges, connects.size(), MoleculeType::mmCIF);
+        if (meta.compound.size() >= 4)
+        {
+            mol->compound = meta.compound;
+        }
+        mol->source = meta.source;
+        mol->author = meta.author;
+        if (!meta.has_secstr)
+        {
+            mol->SecStrFromAngles();
+        }
+        if (meta.is_crystal)
+        {
+            CMapHeaderBase mapHeader;
+            mapHeader.a = meta.a;
+            mapHeader.b = meta.b;
+            mapHeader.c = meta.c;
+            mapHeader.alpha = meta.alpha;
+            mapHeader.beta = meta.beta;
+            mapHeader.gamma = meta.gamma;
+
+            int spgpno = 0;
+            if (!meta.spacegroup_hm.empty())
+            {
+                spgpno = mapHeader.FindHMSymbol(meta.spacegroup_hm.c_str());
+            }
+            if (spgpno <= 0 && !meta.spacegroup_pdb_name.empty())
+            {
+                spgpno = mapHeader.FindHMSymbol(meta.spacegroup_pdb_name.c_str());
+            }
+            if (spgpno <= 0 && meta.spacegroup_number > 0)
+            {
+                spgpno = meta.spacegroup_number;
+            }
+            if (spgpno > 0)
+            {
+                mapHeader.spgpno = spgpno;
+            }
+            mapHeader.SetSymmOps();
+            if (meta.has_explicit_frac)
+            {
+                for (int r = 0; r < 3; ++r)
+                {
+                    for (int c = 0; c < 3; ++c)
+                    {
+                        mapHeader.ctof[r][c] = meta.ctof[r][c];
+                    }
+                }
+            }
+            mol->SetMapHeader(mapHeader);
+        }
+        Models->AddItem(mol);
     }
     else
     {
-        if ((reslist = LoadPDB(file.fp(), &connects)) == NULL)
+        std::unique_ptr<io> ioObj(io::defaultIo());
+        io &file = *ioObj;
+        if (!file.open(pathname, "r"))
         {
-            file.close();
+            std::string s("MIGLWidget::LoadPDBFile:Can't open file: ");
+            s += pathname;
+            Logger::message(s);
             return false;
         }
-        Models->AddItem(reslist, compound, file.fp(), &connects, MoleculeType::PDB);
+        if (IsXMLMolecule(file))
+        {
+            needscoloring = false;
+            if (LoadXMLMolecule(pathname, 0) == false)
+            {
+                file.close();
+                return false;
+            }
+        }
+        else
+        {
+            if ((reslist = LoadPDB(file.fp(), &connects)) == NULL)
+            {
+                file.close();
+                return false;
+            }
+            Models->AddItem(reslist, compound, file.fp(), &connects, MoleculeType::PDB);
+        }
+        file.close();
     }
 
     if (needscoloring)
@@ -11479,7 +11544,6 @@ bool MIGLWidget::LoadPDBFile(const char *pathname)
     newfile = 1;
     SetTitle(pathname);
     Modify(true);
-    file.close();
     return true;
 }
 
@@ -12180,21 +12244,40 @@ void MIGLWidget::OpenAnyFile(const std::string &fname)
     const char *arg = fname.c_str();
     const char *ext = file_extension(fname.c_str());
 
-    if (strcmp(ext, ".mlw") == 0)
+    if (strcasecmp(ext, ".mlw") == 0)
     {
         if (OnOpenDocument(arg))
             SetTitle(fname);
         return;
     }
 
-    if (strcmp(ext, ".pdb") == 0)
+    if (MIMainWindow::isPhaseFile(fname))
+    {
+        mapLoadfromphsfile(arg);
+        return;
+    }
+
+    if (strcasecmp(ext, ".pdb") == 0 ||
+        strcasecmp(ext, ".ent") == 0 ||
+        strcasecmp(ext, ".cif") == 0 ||
+        strcasecmp(ext, ".mmcif") == 0 ||
+        strcasecmp(ext, ".gz") == 0)
     {
         if (LoadPDBFile(arg))
         {
             if (_filename.empty())
             {
                 _filename = fname;
-                _filename.erase(_filename.size() - 4); // remove 4 chars in ".pdb"
+                if (strcasecmp(ext, ".gz") == 0 && _filename.size() > 3)
+                {
+                    _filename.erase(_filename.size() - 3);
+                }
+                const char *innerExt = file_extension(_filename.c_str());
+                size_t extLen = strlen(innerExt);
+                if (extLen > 0 && _filename.size() > extLen)
+                {
+                    _filename.erase(_filename.size() - extLen);
+                }
                 _filename += ".mlw";
                 SetTitle(_filename);
             }
@@ -12202,19 +12285,7 @@ void MIGLWidget::OpenAnyFile(const std::string &fname)
         return;
     }
 
-    if ((strcmp(ext, ".mtz") == 0)
-        || (strcmp(ext, ".phs") == 0)
-        || (strcmp(ext, ".fcf") == 0)
-        || // we no longer support these extensions b/c their readers are broken
-           // || (strcmp(ext, ".sca") == 0)
-           // || (strcmp(ext, ".ref") == 0)
-        (strcmp(ext, ".cif") == 0))
-    {
-        mapLoadfromphsfile(arg);
-        return;
-    }
-
-    if (strcmp(ext, ".map") == 0)
+    if (strcasecmp(ext, ".map") == 0)
     {
         mapLoadfromfile(arg);
         return;

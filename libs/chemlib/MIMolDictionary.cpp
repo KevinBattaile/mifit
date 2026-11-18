@@ -322,7 +322,7 @@ void MIMolDictionary::build_map()
     for (dict_map::iterator p = DictMap.begin(); p != DictMap.end(); ++p)
         residue_set.insert(p->first);
 
-    Logger::log("Inserted %d residues into the dictionary, with %d total conformers", residue_set.size(), DictMap.size());
+    Logger::log("Inserted %zu residues into the dictionary, with %zu total conformers", residue_set.size(), DictMap.size());
 }
 
 int MIMolDictionary::CountConformers(const std::string &type) const

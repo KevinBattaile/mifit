@@ -3396,7 +3396,7 @@ void MIMolOpt::FullOptimize(MIAtomList &CurrentAtoms, MIMoleculeBase *fitmol, EM
     {
         delete[] tatomflags;
     }
-    Logger::footer("");
+    Logger::footer("%s", "");
 }
 
 void MIMolOpt::LigandOptimize(MIAtomList &CurrentAtoms, MIMoleculeBase *fitmol, EMapBase *emap, const float *center,
@@ -3867,7 +3867,7 @@ void MIMolOpt::LigandOptimize(MIAtomList &CurrentAtoms, MIMoleculeBase *fitmol, 
         internalSetRefiRes(NULL, 0);
     }
 
-    Logger::footer("");
+    Logger::footer("%s", "");
 }
 
 bool MIMolOpt::BuildMainchain(Residue *res, MIMoleculeBase *model, EMapBase *emap, bool addAtomsToNextResidue)

@@ -50,6 +50,7 @@ namespace chemlib
 #include "mmCIF.h"
 #include "molfile.h"
 #include "PDB.h"
+#include "GemmiModelIO.h"
 #include "SMILES.h"
 #include "MIMolInfo.h"
 #include "MIMolIOBase.h"

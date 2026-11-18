@@ -60,13 +60,15 @@ void Logger::footer(const char *format, ...)
 
 void Logger::debug(const char *format, ...)
 {
+#ifdef DEBUG
     va_list argp;
     va_start(argp, format);
     std::string s = format_arg_list(format, argp);
     va_end(argp);
     writeToLogFile("DEBUG", s);
-#ifdef DEBUG
     MIMainWindowDebug(s);
+#else
+    (void)format;
 #endif
 }
 

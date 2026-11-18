@@ -96,6 +96,7 @@ public:
     void fill_surf_menu(QMenu*);
 
     void OpenFiles(const std::vector<std::string> &files, bool newWindow = false);
+    static bool isPhaseFile(const std::string &fname);
 
     BatchJobManager *GetJobManager();
     bool isJobLimit();
