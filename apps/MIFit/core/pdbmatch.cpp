@@ -483,7 +483,7 @@ Residue *matchvec(const MIAtomList &CA, const MIAtomList &CB, std::string &pentd
         nvec++;
     }
     sprintf(buf, "Checked %d pentamer vectors", nvec);
-    Logger::log(buf);
+    Logger::log("%s", buf);
     found = 0;
     /* write out in reverse order so that best hit is first in xfit
      * for(i=0;i<MAXHITS;i++){
@@ -609,10 +609,10 @@ Residue *matchvec(const MIAtomList &CA, const MIAtomList &CB, std::string &pentd
     for (i = MAXHITS-1; i >= 0; i--)
     {
         sprintf(buf, "%3d: hit=%5d start=%5d end=%5d %c %s", i, top[i].sum, top[i].astart, top[i].aend, top[i].rchain, top[i].file);
-        Logger::log(buf);
+        Logger::log("%s", buf);
     }
     sprintf(buf, "Found %d atoms", found);
-    Logger::log(buf);
+    Logger::log("%s", buf);
     return (reslist);
 }
 

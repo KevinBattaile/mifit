@@ -225,6 +225,20 @@ Monomer*Ligand::AddRes(const std::string &type, const std::string &name, unsigne
     return residues.back();
 }
 
+Monomer*Ligand::AddRes(const std::string &type, const std::string &name, unsigned short linkage_type,
+                       const std::string &chain_id_str, char secstr)
+{
+    Monomer target;
+    target.setType(type);
+    target.setName(name);
+    target.set_linkage_type(linkage_type);
+    target.set_chain_id_str(chain_id_str);
+    target.setSecstr(secstr);
+
+    residues.push_back(new Monomer(target));
+    return residues.back();
+}
+
 Monomer*Ligand::AddRes(const Residue &res, const std::vector<Bond> &orig_bonds)
 {
     Monomer *new_res = new Monomer(res);

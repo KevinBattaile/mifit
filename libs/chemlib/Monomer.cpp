@@ -55,12 +55,22 @@ Monomer::Monomer()
 }
 
 Monomer::Monomer(const Monomer &rhs)
+    : type_(rhs.type_),
+      name_(rhs.name_),
+      linkage_type_(rhs.linkage_type_),
+      chain_id_(rhs.chain_id_),
+      chain_id_str_(rhs.chain_id_str_),
+      secstr_(rhs.secstr_),
+      name1_(rhs.name1_),
+      seqpos_(rhs.seqpos_),
+      flags_(rhs.flags_),
+      confomer_(rhs.confomer_),
+      x_(rhs.x_),
+      y_(rhs.y_)
 {
     ++refCounts[this];
-    *this = rhs;
 
     // must do a deep copy of the atoms
-    atoms_.clear();
     for (unsigned int i = 0; i < rhs.atoms_.size(); ++i)
     {
         MIAtom *newAtom = new MIAtom;

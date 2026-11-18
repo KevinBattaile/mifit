@@ -49,6 +49,8 @@ namespace chemlib
 
         Monomer *AddRes(const std::string&, const std::string&, unsigned short linkage_type = 0,
                         unsigned short chain_id = ' ', char = 'U');
+        Monomer *AddRes(const std::string &type, const std::string &name, unsigned short linkage_type,
+                        const std::string &chain_id_str, char secstr = 'U');
         Monomer *AddRes(const Residue&, const std::vector<Bond> &orig_bonds);
         int GetNumAtoms() const;
 

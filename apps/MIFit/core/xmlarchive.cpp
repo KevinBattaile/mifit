@@ -249,7 +249,7 @@ void XMLArchive::WriteField(const Residue &res)
         secstr = 'X';
     }
     f = format("%s<Residue name=\"%s\" type=\"%s\" chain=\"%d\" chain_str=\"%s\" secstr=\"%c\" confomer=\"%d\" flags=\"%d\" linkage_type=\"%d\" name1=\"%c\" seqpos=\"%d\" >\n",
-               indent, res.name().c_str(), res.type().c_str(), (int)res.chain_id(), res.chain_id_str().c_str(), secstr, (int)res.confomer(), (int)res.flags(), (int)res.linkage_type(), res.name1(), res.seqpos());
+               indent, res.name().c_str(), res.type().c_str(), (int)res.chain_id(), encode(res.chain_id_str().c_str()).c_str(), secstr, (int)res.confomer(), (int)res.flags(), (int)res.linkage_type(), res.name1(), res.seqpos());
     Write(f);
     inTag++;
     for (int i = 0; i < res.atomCount(); i++)

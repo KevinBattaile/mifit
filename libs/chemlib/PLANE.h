@@ -48,12 +48,14 @@ namespace chemlib
     public:
         PLANEDICT()
         {
-            memset(this, 0, sizeof(PLANEDICT));
+            Clear();
         }
 
         void Clear()
         {
-            memset(this, 0, sizeof(PLANEDICT));
+            memset(restype, 0, sizeof(restype));
+            natoms = 0;
+            memset(name, 0, sizeof(name));
         }
 
         bool AddAtom(const char *atom_name)

@@ -16,6 +16,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstring>
 #include <map>
 #include <set>
@@ -71,20 +72,16 @@ CifContentKind inspectCifContent(const std::string &path)
             return CifContentKind::Unknown;
 
         char line[1024];
-        bool sawRefln = false;
-        int linesRead = 0;
-        const int maxLines = 20000;
-        while (linesRead < maxLines && stream->gets(line, sizeof(line)) != nullptr)
+        while (stream->gets(line, sizeof(line)) != nullptr)
         {
-            ++linesRead;
             const char *p = line;
             while (*p && std::isspace(static_cast<unsigned char>(*p)))
                 ++p;
             if (*p != '_')
                 continue;
 
-            if (strncmp(p, "_atom_site.", 11) == 0 ||
-                strncmp(p, "_chem_comp_atom.", 16) == 0)
+            // Ligand dictionaries (_chem_comp_atom.) are intentionally not coordinates.
+            if (strncmp(p, "_atom_site.", 11) == 0)
             {
                 return CifContentKind::Coordinates;
             }
@@ -92,11 +89,9 @@ CifContentKind inspectCifContent(const std::string &path)
                 strncmp(p, "_refln_", 7) == 0 ||
                 strncmp(p, "_diffrn_refln.", 14) == 0)
             {
-                sawRefln = true;
+                return CifContentKind::Reflections;
             }
         }
-        if (sawRefln)
-            return CifContentKind::Reflections;
     }
     catch (...)
     {
@@ -125,24 +120,21 @@ bool IsCifReflectionFile(const std::string &path)
 
 bool IsGemmiCoordinateFile(const std::string &path)
 {
-    if (endsWithIgnoreCase(path, ".mmcif") ||
-        endsWithIgnoreCase(path, ".mmcif.gz") ||
-        endsWithIgnoreCase(path, ".cif.gz") ||
-        endsWithIgnoreCase(path, ".pdb.gz") ||
+    if (endsWithIgnoreCase(path, ".pdb.gz") ||
         endsWithIgnoreCase(path, ".ent.gz"))
     {
-        return !IsCifReflectionFile(path);
+        return true;
     }
-    if (endsWithIgnoreCase(path, ".cif"))
-    {
-        return IsCifCoordinateFile(path);
-    }
-    return false;
+    return IsCifCoordinateFile(path);
 }
 
-Residue *LoadGemmiStructure(const std::string &path,
-                            std::vector<Bond> *connects,
-                            GemmiStructureMetadata *out_meta)
+namespace
+{
+
+Residue *loadGemmiStructureImpl(const std::string &path,
+                                std::vector<Bond> *connects,
+                                GemmiStructureMetadata *out_meta,
+                                Residue *&first_res)
 {
     if (connects)
         connects->clear();
@@ -165,9 +157,12 @@ Residue *LoadGemmiStructure(const std::string &path,
         return nullptr;
     }
 
+    if (st.models.size() > 1)
+    {
+        Logger::log("%s contains %zu models; loading only the first", path.c_str(), st.models.size());
+    }
     const gemmi::Model &model = st.first_model();
 
-    Residue *first_res = nullptr;
     Residue *curr_res = nullptr;
     int atom_serial = 0;
 
@@ -193,7 +188,7 @@ Residue *LoadGemmiStructure(const std::string &path,
 
             for (const gemmi::Atom &gat : gres.atoms)
             {
-                if (gat.pos.x >= 9999.0 || gat.pos.y >= 9999.0 || gat.pos.z >= 9999.0)
+                if (!std::isfinite(gat.pos.x) || !std::isfinite(gat.pos.y) || !std::isfinite(gat.pos.z))
                     continue;
 
                 MIAtom *atom = new MIAtom();
@@ -430,6 +425,29 @@ Residue *LoadGemmiStructure(const std::string &path,
     }
 
     return first_res;
+}
+
+} // anonymous namespace
+
+Residue *LoadGemmiStructure(const std::string &path,
+                            std::vector<Bond> *connects,
+                            GemmiStructureMetadata *out_meta)
+{
+    Residue *first_res = nullptr;
+    try
+    {
+        return loadGemmiStructureImpl(path, connects, out_meta, first_res);
+    }
+    catch (const std::exception &e)
+    {
+        Logger::log("Gemmi error processing %s: %s", path.c_str(), e.what());
+        Logger::message(::format("Error processing structure file %s:\n%s", path.c_str(), e.what()));
+        if (first_res)
+            FreeResidueList(first_res);
+        if (connects)
+            connects->clear();
+        return nullptr;
+    }
 }
 
 } // namespace chemlib

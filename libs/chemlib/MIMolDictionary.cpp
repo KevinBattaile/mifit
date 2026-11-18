@@ -375,18 +375,26 @@ void MIMolDictionary::RestrainEnds(Residue *RefiRes, int nRefiRes)
 
 static bool AtomNameMatches(const char *a, const char *b)
 {
+    if (a[0] != b[0])
+    {
+        return false;
+    }
     if (strcmp(a, b) == 0)
     {
         return true;
     }
-    if ((strcmp(a, "O1P") == 0 && strcmp(b, "OP1") == 0)
-        || (strcmp(a, "OP1") == 0 && strcmp(b, "O1P") == 0)
-        || (strcmp(a, "O2P") == 0 && strcmp(b, "OP2") == 0)
-        || (strcmp(a, "OP2") == 0 && strcmp(b, "O2P") == 0)
-        || (strcmp(a, "O3P") == 0 && strcmp(b, "OP3") == 0)
-        || (strcmp(a, "OP3") == 0 && strcmp(b, "O3P") == 0))
+    if (a[0] == 'O')
     {
-        return true;
+        // phosphate oxygen aliases (O1P/OP1, etc.)
+        if ((strcmp(a, "O1P") == 0 && strcmp(b, "OP1") == 0)
+            || (strcmp(a, "OP1") == 0 && strcmp(b, "O1P") == 0)
+            || (strcmp(a, "O2P") == 0 && strcmp(b, "OP2") == 0)
+            || (strcmp(a, "OP2") == 0 && strcmp(b, "O2P") == 0)
+            || (strcmp(a, "O3P") == 0 && strcmp(b, "OP3") == 0)
+            || (strcmp(a, "OP3") == 0 && strcmp(b, "O3P") == 0))
+        {
+            return true;
+        }
     }
     while (*a && *b)
     {
@@ -2686,7 +2694,7 @@ int MIMolDictionary::LoadDict(FILE *fp, bool append, bool replace_old)
         {
             continue;
         }
-        memset(&pdict, 0, sizeof(PLANEDICT));
+        pdict.Clear();
         if (sscanf(buf, "%*s%s%d", pdict.restype, &pdict.natoms) != 2)
         {
             continue;

@@ -150,6 +150,14 @@ Residue::Residue(const Residue &lhs)
       prev_res(NULL)
 {
 
+    copyPrefsFrom(lhs);
+}
+
+void Residue::copyPrefsFrom(const Residue &lhs)
+{
+    prefbonds.clear();
+    prefangles.clear();
+
     // Cache atoms from both residues for migrating prefbonds and prefangles
     MIAtomList old_atoms;
     MIAtomList new_atoms;
@@ -185,11 +193,14 @@ Residue::Residue(const Residue &lhs)
     }
 }
 
-Residue&Residue::operator=(Residue other)
+Residue&Residue::operator=(const Residue &other)
 {
-    using std::swap;
-
-    swap(*this, other);
+    if (this != &other)
+    {
+        // only the single residue is copied; list links are left untouched
+        Monomer::operator=(other);
+        copyPrefsFrom(other);
+    }
     return *this;
 }
 

@@ -1047,12 +1047,26 @@ void MIMainWindow::createDockWindows()
     jobsDock = AddAsDockWidget(jobsView, "Jobs", Qt::LeftDockWidgetArea);
 }
 
-static bool is_valid_extension(const char *ext)
+static bool hasSuffixNoCase(const std::string &s, const char *suffix)
+{
+    size_t n = strlen(suffix);
+    return s.size() >= n && strcasecmp(s.c_str() + s.size() - n, suffix) == 0;
+}
+
+static bool is_coordinate_gz(const std::string &path)
+{
+    return hasSuffixNoCase(path, ".cif.gz")
+           || hasSuffixNoCase(path, ".mmcif.gz")
+           || hasSuffixNoCase(path, ".pdb.gz")
+           || hasSuffixNoCase(path, ".ent.gz");
+}
+
+static bool is_valid_extension(const char *ext, const std::string &path)
 {
     return (strcasecmp(ext, ".pdb") == 0
             || strcasecmp(ext, ".ent") == 0
             || strcasecmp(ext, ".mmcif") == 0
-            || strcasecmp(ext, ".gz") == 0
+            || (strcasecmp(ext, ".gz") == 0 && is_coordinate_gz(path))
             || strcasecmp(ext, ".mlw") == 0
             || strcasecmp(ext, ".mtz") == 0
             || strcasecmp(ext, ".phs") == 0
@@ -1076,7 +1090,7 @@ bool MIMainWindow::isPhaseFile(const std::string &fname)
     }
     if (strcasecmp(ext, ".cif") == 0 ||
         strcasecmp(ext, ".mmcif") == 0 ||
-        strcasecmp(ext, ".gz") == 0)
+        (strcasecmp(ext, ".gz") == 0 && is_coordinate_gz(fname)))
     {
         return chemlib::IsCifReflectionFile(fname);
     }
@@ -1114,7 +1128,7 @@ void MIMainWindow::OpenFiles(const std::vector<std::string> &files, bool newWin)
         arg = ss.c_str();
         const char *ext = file_extension(arg);
 
-        if (!is_valid_extension(ext))
+        if (!is_valid_extension(ext, ss))
         {
             Log(::format("Unknown file type %s, ingoring.", arg));
             continue;

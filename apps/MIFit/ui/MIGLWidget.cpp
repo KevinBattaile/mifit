@@ -11544,6 +11544,7 @@ bool MIGLWidget::LoadPDBFile(const char *pathname)
     newfile = 1;
     SetTitle(pathname);
     Modify(true);
+    Logger::log("Loaded model %s", pathname);
     return true;
 }
 
@@ -12261,7 +12262,7 @@ void MIGLWidget::OpenAnyFile(const std::string &fname)
         strcasecmp(ext, ".ent") == 0 ||
         strcasecmp(ext, ".cif") == 0 ||
         strcasecmp(ext, ".mmcif") == 0 ||
-        strcasecmp(ext, ".gz") == 0)
+        (strcasecmp(ext, ".gz") == 0 && chemlib::IsGemmiCoordinateFile(fname)))
     {
         if (LoadPDBFile(arg))
         {

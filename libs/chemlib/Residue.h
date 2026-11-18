@@ -59,7 +59,7 @@ namespace chemlib
 
         //copy ctor, only copies single residue (i.e. doesn't follow next())
         Residue(const Residue &lhs);
-        Residue&operator=(Residue other);
+        Residue&operator=(const Residue &other);
 
         Residue(const Monomer &lhs);
 
@@ -150,6 +150,8 @@ namespace chemlib
         static const std::string liststring(Residue *res);
 
     private:
+        void copyPrefsFrom(const Residue &lhs);
+
         Residue *next_res;
         Residue *prev_res;
 

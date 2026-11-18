@@ -19,7 +19,7 @@ void CopyChiral(CHIRALDICT *chiral, const CHIRAL &chiralSource)
 
 void CopyPlane(PLANEDICT *plane, const PLANE &planeSource)
 {
-    memset(plane, 0, sizeof(PLANEDICT) );
+    plane->Clear();
     plane->natoms = planeSource.natoms;
     for (int i = 0; i < plane->natoms && i < MAXPLANE; ++i)
     {
