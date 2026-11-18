@@ -1,7 +1,9 @@
 #include <opengl/Sphere.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 #include <cmath>
+#include <vector>
 #include <math/mi_math.h>
 
 using namespace std;
@@ -107,15 +109,20 @@ Sphere::Sphere(float radius, int slices, int stacks)
 
 void Sphere::render()
 {
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_NORMAL_ARRAY);
-    glEnableClientState(GL_TEXTURE_COORD_ARRAY);
-
-    glVertexPointer(3, GL_FLOAT, 0, vertexBuffer);
-    glNormalPointer(GL_FLOAT, 0, normalBuffer);
-    glTexCoordPointer(2, GL_FLOAT, 0, textureBuffer);
-
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, vertexCount);
+    std::vector<ModernVertex> verts(vertexCount);
+    for (int i = 0; i < vertexCount; ++i)
+    {
+        verts[i].px = vertexBuffer[i * 3 + 0];
+        verts[i].py = vertexBuffer[i * 3 + 1];
+        verts[i].pz = vertexBuffer[i * 3 + 2];
+        verts[i].nx = normalBuffer[i * 3 + 0];
+        verts[i].ny = normalBuffer[i * 3 + 1];
+        verts[i].nz = normalBuffer[i * 3 + 2];
+        verts[i].r = 1.0f; verts[i].g = 1.0f; verts[i].b = 1.0f; verts[i].a = 1.0f;
+        verts[i].u = textureBuffer[i * 2 + 0];
+        verts[i].v = textureBuffer[i * 2 + 1];
+    }
+    ModernShader::drawVertices(GL_TRIANGLE_STRIP, verts.data(), vertexCount);
 }
 
 }

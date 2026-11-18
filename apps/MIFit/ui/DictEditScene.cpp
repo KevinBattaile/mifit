@@ -2,6 +2,7 @@
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
 #include <opengl/Light.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/Sphere.h>
 #include <opengl/Viewpoint.h>
@@ -24,7 +25,7 @@ static void logOpenGLErrors(const char *file, int line)
     int error = glGetError();
     if (error != 0)
     {
-        Logger::log("OpenGL error %s (%d) at line %d in %s", gluErrorString(error), error, line, file);
+        Logger::log("OpenGL error %d at line %d in %s", error, line, file);
     }
 }
 
@@ -66,10 +67,7 @@ void DictEditScene::setViewport(Viewport *viewport)
 void DictEditScene::initializeForRender()
 {
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glShadeModel(GL_SMOOTH);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    ModernShader::setLightingEnabled(true);
     renderer->initializeForRender();
 }
 
@@ -88,7 +86,7 @@ void DictEditScene::render()
 
     logOpenGLErrors(__FILE__, __LINE__);
 
-    glPushMatrix();
+    ModernShader::pushModelView();
 
     renderer->Draw2(models, true, true);
     if (showAtomLabels)
@@ -98,29 +96,35 @@ void DictEditScene::render()
     renderer->DrawAnnotations(models->getMolecules());
     if (pickedBond != NULL)
     {
-        glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LINE_BIT);
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
         glDisable(GL_DEPTH_TEST);
-        glDisable(GL_LIGHTING);
-        glLineWidth(4.0f);
-        glColor3fv(renderer->getColor(Colors::GREEN));
-        glBegin(GL_LINES);
-        glVertex3f(pickedBond->getAtom1()->x(), pickedBond->getAtom1()->y(), pickedBond->getAtom1()->z());
-        glVertex3f(pickedBond->getAtom2()->x(), pickedBond->getAtom2()->y(), pickedBond->getAtom2()->z());
-        glEnd();
-        glPopAttrib();
+        glLineWidth(1.0f);
+        float *col = renderer->getColor(Colors::GREEN);
+        ModernVertex v[2] = {
+            { pickedBond->getAtom1()->x(), pickedBond->getAtom1()->y(), pickedBond->getAtom1()->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f },
+            { pickedBond->getAtom2()->x(), pickedBond->getAtom2()->y(), pickedBond->getAtom2()->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f }
+        };
+
+        ModernShader::drawVertices(GL_LINES, v, 2);
+        glEnable(GL_DEPTH_TEST);
+        ModernShader::setLightingEnabled(prevLight);
     }
     if (pickedAngle != NULL)
     {
-        glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LINE_BIT);
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
         glDisable(GL_DEPTH_TEST);
-        glDisable(GL_LIGHTING);
-        glLineWidth(4.0f);
-        glColor3fv(renderer->getColor(7));
-        glBegin(GL_LINES);
-        glVertex3f(pickedAngle->getAtom1()->x(), pickedAngle->getAtom1()->y(), pickedAngle->getAtom1()->z());
-        glVertex3f(pickedAngle->getAtom3()->x(), pickedAngle->getAtom3()->y(), pickedAngle->getAtom3()->z());
-        glEnd();
-        glPopAttrib();
+        glLineWidth(1.0f);
+        float *col = renderer->getColor(7);
+        ModernVertex v[2] = {
+            { pickedAngle->getAtom1()->x(), pickedAngle->getAtom1()->y(), pickedAngle->getAtom1()->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f },
+            { pickedAngle->getAtom3()->x(), pickedAngle->getAtom3()->y(), pickedAngle->getAtom3()->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f }
+        };
+
+        ModernShader::drawVertices(GL_LINES, v, 2);
+        glEnable(GL_DEPTH_TEST);
+        ModernShader::setLightingEnabled(prevLight);
     }
     logOpenGLErrors(__FILE__, __LINE__);
 
@@ -133,7 +137,7 @@ void DictEditScene::render()
     renderer->circleStackAtoms(atomStack);
     logOpenGLErrors(__FILE__, __LINE__);
 
-    glPopMatrix();
+    ModernShader::popModelView();
 
     if (cameraMouseOrbitor->getStartVector() != NULL || mouseTranslator->getStartPosition() != NULL)
     {

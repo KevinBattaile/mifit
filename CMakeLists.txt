@@ -288,6 +288,8 @@ add_library(miopengl STATIC
     libs/opengl/Frustum.h
     libs/opengl/Light.cpp
     libs/opengl/Light.h
+    libs/opengl/ModernShader.cpp
+    libs/opengl/ModernShader.h
     libs/opengl/Object3d.cpp
     libs/opengl/Object3d.h
     libs/opengl/OpenGL.h

@@ -25,6 +25,7 @@ public:
     QFontMetrics fontMetrics() const;
 
     void renderText(float x, float y, const QString &text);
+    void renderText(float x, float y, const QString &text, const float color[4]);
 
 
 private:

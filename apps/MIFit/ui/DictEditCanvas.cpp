@@ -16,6 +16,7 @@
 #include <math/Point3.h>
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/Sphere.h>
 #include <opengl/StereoView.h>
@@ -595,11 +596,8 @@ void DictEditCanvas::draw(QPainter *painter)
 
     painter->save();
     painter->beginNativePainting();
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    ModernShader::pushProjection();
+    ModernShader::pushModelView();
 
     if (!initialized)
     {
@@ -614,11 +612,8 @@ void DictEditCanvas::draw(QPainter *painter)
     scene->initializeForRender();
     render();
 
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-    glPopAttrib();
+    ModernShader::popProjection();
+    ModernShader::popModelView();
     painter->endNativePainting();
     painter->restore();
     working = false;

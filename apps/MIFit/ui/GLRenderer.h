@@ -89,7 +89,7 @@ class GLRenderer
      * @param end the other end
      * @param radius radius of the cylinder
      */
-    static void DrawCylinder(const mi::math::Vector3<float> &start, const mi::math::Vector3<float> &end, float radius);
+    void DrawCylinder(const mi::math::Vector3<float> &start, const mi::math::Vector3<float> &end, float radius);
 
     static void normalize(float a[3]);
 
@@ -144,6 +144,8 @@ class GLRenderer
     void DrawPolySurf(int npr, int nseg, double dPoints[][3], double dNorms[][3]);
     void DrawCappedCylinder(int nSeg, double dAxisA[3], double dAxisB[3], double dEndA[][3], double dEndB[][3],
                             double dNormA[][3], double dNormB[][3], double dCapNormA[][3], double dCapNormB[][3]);
+
+    float currentColor[4];
 
     void SetColor(unsigned char *bRGBA);
 

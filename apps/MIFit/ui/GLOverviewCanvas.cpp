@@ -2,6 +2,7 @@
 #include <math/Point3.h>
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/QuatUtil.h>
 #include <opengl/Viewport.h>
@@ -163,7 +164,7 @@ void GLOverviewCanvas::paintGL()
         return;
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glDisable(GL_LIGHTING);
+    ModernShader::setLightingEnabled(false);
 
     createAlphaCarbonTrace();
 
@@ -177,36 +178,34 @@ void GLOverviewCanvas::paintGL()
     camera->setEye(eye);
     camera->lookAt(target);
 
-    float fogColor[] = { 0.1f, 0.1f, 0.1f, 1.0f };
-    glEnable(GL_FOG);
-    glFogfv(GL_FOG_COLOR, fogColor);
-    glFogf(GL_FOG_START, 0.5 * frustum->getFocalLength());
-    glFogf(GL_FOG_END, 1.2 * frustum->getFocalLength());
-    glFogi(GL_FOG_MODE, GL_LINEAR);
+    QVector4D fogColor(0.1f, 0.1f, 0.1f, 1.0f);
+    ModernShader::setFog(true, 0.5f * frustum->getFocalLength(), 1.2f * frustum->getFocalLength(), fogColor);
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    ModernShader::loadIdentityModelView();
 
     viewport->render();
     frustum->render(*viewport);
 
     camera->render();
 
-    glPushMatrix();
+    ModernShader::pushModelView();
 
-    glTranslatef(viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
+    ModernShader::translateModelView(viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
 
     float rotation[16];
     QuatUtil::store(viewmat, rotation);
-    glMultMatrixf(rotation);
+    ModernShader::multModelView(rotation);
 
-    glTranslatef(-viewpoint->center()[0], -viewpoint->center()[1], -viewpoint->center()[2]);
+    ModernShader::translateModelView(-viewpoint->center()[0], -viewpoint->center()[1], -viewpoint->center()[2]);
 
     const Residue *res = GetView()->getFocusResidue();
     MIAtom *focusedResidueAlphaCarbon = NULL;
     if (res != NULL)
         focusedResidueAlphaCarbon = atom_from_name("CA", *res);
+
+    std::vector<ModernVertex> lineVerts;
+    lineVerts.reserve(bonds.size() * 2);
 
     vector<Bond>::iterator bondIter = bonds.begin();
     while (bondIter != bonds.end())
@@ -214,61 +213,65 @@ void GLOverviewCanvas::paintGL()
         MIAtom *a1 = (*bondIter).getAtom1();
         MIAtom *a2 = (*bondIter).getAtom2();
         int c1 = ::getColor(a1);
-        glColor3fv(getColor(c1));
-        glBegin(GL_LINES);
-        glVertex3f(a1->x(), a1->y(), a1->z());
-        glVertex3f(a2->x(), a2->y(), a2->z());
-        glEnd();
+        float *col = getColor(c1);
+        ModernVertex v1 = { a1->x(), a1->y(), a1->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f };
+        ModernVertex v2 = { a2->x(), a2->y(), a2->z(), 0.0f, 0.0f, 1.0f, col[0], col[1], col[2], 1.0f, 0.0f, 0.0f };
+
+        lineVerts.push_back(v1);
+        lineVerts.push_back(v2);
+
         // mark the focusres CA
         if (a1 == focusedResidueAlphaCarbon)
         {
-            glColor3f(1.0f, 1.0f, 1.0f);
             drawSelectedResidueMarker(a1->x(), a1->y(), a1->z());
         }
         else if (a2 == focusedResidueAlphaCarbon)
         {
-            glColor3f(1.0f, 1.0f, 1.0f);
             drawSelectedResidueMarker(a2->x(), a2->y(), a2->z());
         }
         bondIter++;
     }
+    if (!lineVerts.empty())
+    {
+        ModernShader::drawVertices(GL_LINES, lineVerts.data(), lineVerts.size());
+    }
 
-    glPopMatrix();
+    ModernShader::popModelView();
 
-    glPushMatrix();
+    ModernShader::pushModelView();
 
     // Draw bounding box of view
-    glTranslatef(viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
+    ModernShader::translateModelView(viewpoint->center()[0], viewpoint->center()[1], viewpoint->center()[2]);
 
     // Disable depth test to render on top of other elements.
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_FOG);
-
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glBegin(GL_LINES);
-    glVertex3f(0.0f, -viewpointCenterMarkerRadius, 0.0f);
-    glVertex3f(0.0f, viewpointCenterMarkerRadius, 0.0f);
-    glVertex3f(-viewpointCenterMarkerRadius, 0.0f, 0.0f);
-    glVertex3f(viewpointCenterMarkerRadius, 0.0f, 0.0f);
-    glEnd();
+    ModernShader::setFog(false, 0.5f * frustum->getFocalLength(), 1.2f * frustum->getFocalLength(), fogColor);
 
     float viewWidth = viewpoint->getwidth()/2.0f;
     float viewHeight = viewpoint->getheight()/2.0f;
-    glBegin(GL_LINES);
-    glVertex2f(-viewWidth, -viewHeight);
-    glVertex2f(viewWidth, -viewHeight);
-    glVertex2f(-viewWidth, viewHeight);
-    glVertex2f(viewWidth, viewHeight);
-    glVertex2f(-viewWidth, -viewHeight);
-    glVertex2f(-viewWidth, viewHeight);
-    glVertex2f(viewWidth, -viewHeight);
-    glVertex2f(viewWidth, viewHeight);
-    glEnd();
+    auto makeWhiteV = [](float x, float y, float z = 0.0f) {
+        ModernVertex v = { x, y, z, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f };
+        return v;
+    };
+    ModernVertex boxVerts[12] = {
+        makeWhiteV(0.0f, -viewpointCenterMarkerRadius),
+        makeWhiteV(0.0f, viewpointCenterMarkerRadius),
+        makeWhiteV(-viewpointCenterMarkerRadius, 0.0f),
+        makeWhiteV(viewpointCenterMarkerRadius, 0.0f),
+        makeWhiteV(-viewWidth, -viewHeight),
+        makeWhiteV(viewWidth, -viewHeight),
+        makeWhiteV(-viewWidth, viewHeight),
+        makeWhiteV(viewWidth, viewHeight),
+        makeWhiteV(-viewWidth, -viewHeight),
+        makeWhiteV(-viewWidth, viewHeight),
+        makeWhiteV(viewWidth, -viewHeight),
+        makeWhiteV(viewWidth, viewHeight)
+    };
+    ModernShader::drawVertices(GL_LINES, boxVerts, 12);
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_FOG);
 
-    glPopMatrix();
+    ModernShader::popModelView();
 
     glFlush();
 }
@@ -285,17 +288,8 @@ float*GLOverviewCanvas::getColor(int colorIndex)
 
 void GLOverviewCanvas::drawSelectedResidueMarker(float x, float y, float z)
 {
-    static GLUquadricObj *quadObj;
-    if (!quadObj)
-    {
-        quadObj = gluNewQuadric();
-    }
-    glPushMatrix();
-    glTranslatef(x, y, z);
-    gluQuadricDrawStyle(quadObj, GLU_FILL);
-    gluQuadricNormals(quadObj, GLU_SMOOTH);
-    gluSphere(quadObj, selectedResidueMarkerRadius, selectedResidueMarkerResolution, selectedResidueMarkerResolution);
-    glPopMatrix();
+    ModernShader::drawUnitSphere(QVector3D(x, y, z), selectedResidueMarkerRadius, QVector4D(1.0f, 1.0f, 1.0f, 1.0f),
+                                 (int)selectedResidueMarkerResolution, (int)selectedResidueMarkerResolution);
 }
 
 void GLOverviewCanvas::mousePressEvent(QMouseEvent *e)

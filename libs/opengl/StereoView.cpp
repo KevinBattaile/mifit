@@ -7,6 +7,7 @@
 #include <opengl/Scene.h>
 #include <opengl/OpenGL.h>
 #include <opengl/QuatUtil.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 
@@ -201,18 +202,15 @@ void StereoView::resetView(int flags)
     {
         glDrawBuffer(GL_BACK_RIGHT);
         glClear(flags);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+        ModernShader::loadIdentityModelView();
         glDrawBuffer(GL_BACK_LEFT);
         glClear(flags);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+        ModernShader::loadIdentityModelView();
     }
     else
     {
         glClear(flags);
-        glMatrixMode(GL_MODELVIEW);
-        glLoadIdentity();
+        ModernShader::loadIdentityModelView();
     }
     printOpenGLErrors(__FILE__, __LINE__);
 }

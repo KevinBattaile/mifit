@@ -2,6 +2,7 @@
 
 #include <opengl/QuatUtil.h>
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 
@@ -54,10 +55,10 @@ void Viewpoint::rotate(Quaternion<float> &rotation)
 
 void Viewpoint::render()
 {
-    static float *floatBuffer = new float[16];
-    glTranslatef(position.x, position.y, position.z);
+    float floatBuffer[16];
+    ModernShader::translateModelView(position.x, position.y, position.z);
     QuatUtil::store(rotation, floatBuffer);
-    glMultMatrixf(floatBuffer);
+    ModernShader::multModelView(floatBuffer);
 }
 
 void Viewpoint::transformVector(Vector3<float> &vector)

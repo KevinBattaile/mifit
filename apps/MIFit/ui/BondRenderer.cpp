@@ -1,4 +1,8 @@
 #include "BondRenderer.h"
+#include <opengl/ModernShader.h>
+#include <vector>
+
+using namespace mi::opengl;
 
 BondRenderer::BondRenderer()
 {
@@ -30,11 +34,15 @@ void BondRenderer::addBond(const QVector3D &pos1, const QVector4D &color1, const
 
 void BondRenderer::draw() const
 {
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, vertices.constData());
-    glColorPointer(4, GL_FLOAT, 0, colors.constData());
-    glDrawArrays(GL_LINES, 0, vertices.size());
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    if (vertices.isEmpty())
+        return;
+
+    std::vector<ModernVertex> mv(vertices.size());
+    for (int i = 0; i < vertices.size(); ++i)
+    {
+        const QVector3D &p = vertices[i];
+        const QVector4D &c = colors[i];
+        mv[i] = { p.x(), p.y(), p.z(), 0.0f, 0.0f, 1.0f, c.x(), c.y(), c.z(), c.w(), 0.0f, 0.0f };
+    }
+    ModernShader::drawVertices(GL_LINES, mv.data(), static_cast<int>(mv.size()));
 }

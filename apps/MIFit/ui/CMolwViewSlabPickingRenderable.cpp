@@ -3,10 +3,12 @@
 
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/QuatUtil.h>
 #include <opengl/StereoView.h>
 #include <opengl/Sphere.h>
+#include <vector>
 
 using namespace chemlib;
 using namespace mi::math;
@@ -79,31 +81,36 @@ void CMolwViewSlabRenderable::render()
         corner.add(position);
     }
 
-    glPushAttrib(GL_CURRENT_BIT | GL_LINE_BIT | GL_ENABLE_BIT);
-    glDisable(GL_LIGHTING);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glDisable(GL_DEPTH_TEST);
 
-    glColor3f(1.0f, 1.0f, 1.0f);
-    glLineWidth(2.0f);
-    glPushName((GLuint) 1);
-    glBegin(GL_LINES);
-    glVertex3f(corners[0].x, corners[0].y, corners[0].z);
-    glVertex3f(corners[1].x, corners[1].y, corners[1].z);
-    glVertex3f(corners[2].x, corners[2].y, corners[2].z);
-    glVertex3f(corners[3].x, corners[3].y, corners[3].z);
-    glEnd();
-    glPopName();
+    glLineWidth(1.0f);
+    auto setV = [](ModernVertex &v, const Vector3<float> &p) {
+        v = { p.x, p.y, p.z, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f };
+    };
 
-    glPushName((GLuint) 2);
-    glBegin(GL_LINES);
-    glVertex3f(corners[4].x, corners[4].y, corners[4].z);
-    glVertex3f(corners[5].x, corners[5].y, corners[5].z);
-    glVertex3f(corners[6].x, corners[6].y, corners[6].z);
-    glVertex3f(corners[7].x, corners[7].y, corners[7].z);
-    glEnd();
-    glPopName();
+    std::vector<ModernVertex> v1(4);
+    setV(v1[0], corners[0]);
+    setV(v1[1], corners[1]);
+    setV(v1[2], corners[2]);
+    setV(v1[3], corners[3]);
 
-    glPopAttrib();
+    ModernShader::pushPickName(1);
+    ModernShader::drawVertices(GL_LINES, v1.data(), v1.size());
+    ModernShader::popPickName();
 
+    std::vector<ModernVertex> v2(4);
+    setV(v2[0], corners[4]);
+    setV(v2[1], corners[5]);
+    setV(v2[2], corners[6]);
+    setV(v2[3], corners[7]);
+
+    ModernShader::pushPickName(2);
+    ModernShader::drawVertices(GL_LINES, v2.data(), v2.size());
+    ModernShader::popPickName();
+
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(prevLight);
 }
 

@@ -2,6 +2,10 @@
 
 #include <opengl/Frustum.h>
 #include <opengl/Renderable.h>
+#include <opengl/ModernShader.h>
+#include <QOpenGLFramebufferObject>
+#include <QOpenGLContext>
+#include <QOpenGLFunctions>
 
 #include <climits>
 
@@ -25,59 +29,85 @@ MousePicker::~MousePicker()
 
 std::vector<GLuint> MousePicker::pick(int x, int y, Frustum *frustum, Renderable *scene)
 {
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
+    std::vector<GLuint> selectedIds;
+    QOpenGLContext *ctx = QOpenGLContext::currentContext();
+    if (!ctx)
+        return selectedIds;
 
-    glSelectBuffer(selectBufferLength, selectBuffer);
-    glRenderMode(GL_SELECT);
+    GLint vp[4] = { 0, 0, 0, 0 };
+    glGetIntegerv(GL_VIEWPORT, vp);
+    int w = vp[2];
+    int h = vp[3];
+    if (w <= 0 || h <= 0)
+        return selectedIds;
 
-    glInitNames();
+    QOpenGLFramebufferObjectFormat fboFormat;
+    fboFormat.setAttachment(QOpenGLFramebufferObject::Depth);
+    QOpenGLFramebufferObject fbo(w, h, fboFormat);
+    if (!fbo.isValid() || !fbo.bind())
+        return selectedIds;
 
-    frustum->beginPicking(x, y);
+    ModernShader::pushProjection();
+    ModernShader::pushModelView();
+
+    ModernShader::setPickingMode(true);
+    glDisable(GL_BLEND);
+    glEnable(GL_DEPTH_TEST);
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     scene->render();
 
-    frustum->endPicking();
+    int glX = x;
+    int glY = h - y;
+    const int radius = 3;
+    unsigned int bestPrimary = 0;
+    unsigned int bestSecondary = 0;
+    int bestDistSq = INT_MAX;
 
-    int numberOfHits = glRenderMode(GL_RENDER);
-
-    std::vector<GLuint> selectedIds;
-    if (numberOfHits > 0)
+    for (int dy = -radius; dy <= radius; ++dy)
     {
-        GLuint smallestMinZ = UINT_MAX;
-        int i = 0;
-        for (int index = 0; index < numberOfHits; ++index)
+        for (int dx = -radius; dx <= radius; ++dx)
         {
-            GLuint numberOfNames = selectBuffer[i];
-            GLuint minZ = selectBuffer[i + 1];
-            // GLuint maxZ = selectBuffer[i+2];
-            if (minZ < smallestMinZ)
+            int px = glX + dx;
+            int py = glY + dy;
+            if (px < 0 || px >= w || py < 0 || py >= h)
+                continue;
+
+            unsigned char pixel[4] = { 0, 0, 0, 0 };
+            glReadPixels(px, py, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixel);
+            unsigned int primaryId = 0;
+            unsigned int secondaryId = 0;
+            ModernShader::decodePickColor(pixel[0], pixel[1], pixel[2], primaryId, secondaryId);
+            if (primaryId != 0)
             {
-                smallestMinZ = minZ;
-                selectedIds.clear();
-                for (GLuint j = 0; j < numberOfNames; ++j)
+                int distSq = dx * dx + dy * dy;
+                if (distSq < bestDistSq)
                 {
-                    GLuint name = selectBuffer[i + 3 + j];
-                    selectedIds.push_back(name);
+                    bestDistSq = distSq;
+                    bestPrimary = primaryId;
+                    bestSecondary = secondaryId;
                 }
             }
-            i += numberOfNames + 3;
         }
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-    glPopAttrib();
+    if (bestPrimary != 0)
+    {
+        selectedIds.push_back(bestPrimary);
+        if (bestSecondary != 0)
+            selectedIds.push_back(bestSecondary);
+    }
+
+    ModernShader::setPickingMode(false);
+    ModernShader::popModelView();
+    ModernShader::popProjection();
+
+    fbo.release();
 
     return selectedIds;
 }
 
 }
-
 }
 }

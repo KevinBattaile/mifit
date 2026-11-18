@@ -1,6 +1,7 @@
 #include <opengl/Light.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 
@@ -78,10 +79,14 @@ void Light::setSpecularColor(float color0, float color1, float color2, float col
 
 void Light::render()
 {
-    glLightfv(lightId, GL_AMBIENT, ambientColor);
-    glLightfv(lightId, GL_DIFFUSE, diffuseColor);
-    glLightfv(lightId, GL_SPECULAR, specularColor);
-    glLightfv(lightId, GL_POSITION, position);
+    QVector4D pos(position[0], position[1], position[2], position[3]);
+    QVector4D eyePos = ModernShader::modelViewMatrix() * pos;
+    ModernShader::setLight(
+        eyePos,
+        QVector4D(ambientColor[0], ambientColor[1], ambientColor[2], ambientColor[3]),
+        QVector4D(diffuseColor[0], diffuseColor[1], diffuseColor[2], diffuseColor[3]),
+        QVector4D(specularColor[0], specularColor[1], specularColor[2], specularColor[3])
+    );
 }
 
 Vector4<float> Light::getPosition()
@@ -106,12 +111,12 @@ float*Light::getSpecularColor()
 
 void Light::glEnable()
 {
-    ::glEnable(lightId);
+    ModernShader::setLightingEnabled(true);
+    render();
 }
 
 void Light::glDisable()
 {
-    ::glDisable(lightId);
 }
 
 }

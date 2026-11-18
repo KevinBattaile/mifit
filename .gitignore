@@ -21,3 +21,4 @@ debug/
 MIFit.exe
 *~
 build/
+mifit.log

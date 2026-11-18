@@ -1,6 +1,7 @@
 #include <opengl/interact/TargetFeedback.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 using namespace mi::opengl;
@@ -29,41 +30,36 @@ void TargetFeedback::setTarget(const Vector3<float> &target)
 
 void TargetFeedback::render()
 {
-
-    glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT | GL_LINE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glEnable(GL_DEPTH_TEST);
-    glDisable(GL_LIGHTING);
     glLineWidth(1.0f);
 
-    glColor3f(color.getX(), color.getY(), color.getZ());
+    ModernShader::pushModelView();
+    ModernShader::translateModelView(target.getX(), target.getY(), target.getZ());
 
-    glPushMatrix();
-    glTranslatef(target.getX(), target.getY(), target.getZ());
+    float margin = length / 3.0f;
+    float r = color.getX(), g = color.getY(), b = color.getZ();
+    ModernVertex verts[12] = {
+        { -length, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { -margin, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        {  margin, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        {  length, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
 
-    glBegin(GL_LINES);
+        { 0.0f, -length, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, -margin, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f,  margin, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f,  length, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
 
-    float margin = length / 3;
-    glVertex3d(-length, 0, 0);
-    glVertex3d(-margin, 0, 0);
-    glVertex3d(margin, 0, 0);
-    glVertex3d(length, 0, 0);
+        { 0.0f, 0.0f, -length,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f, -margin,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f,  margin,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f,  length,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f }
+    };
+    ModernShader::drawVertices(GL_LINES, verts, 12);
 
-    glVertex3d(0, -length, 0);
-    glVertex3d(0, -margin, 0);
-    glVertex3d(0, margin, 0);
-    glVertex3d(0, length, 0);
-
-    glVertex3d(0, 0, -length);
-    glVertex3d(0, 0, -margin);
-    glVertex3d(0, 0, margin);
-    glVertex3d(0, 0, length);
-
-    glEnd();
-
-    glPopMatrix();
-
-    glPopAttrib();
-
+    ModernShader::popModelView();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 }

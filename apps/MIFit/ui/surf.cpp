@@ -13,12 +13,15 @@
 
 #include <jacgrid/jacgrid.h>
 #include "surf.h"
+#include <opengl/ModernShader.h>
+#include <opengl/OpenGL.h>
 
 #include <math/Matrix4.h>
 #include <math/Tuple4.h>
 
 using namespace chemlib;
 using namespace mi::math;
+using namespace mi::opengl;
 using namespace std;
 
 class MISurface;
@@ -244,8 +247,8 @@ public:
     {
         float third = 1.0f/3.0f;
 
-        float view[16];
-        glGetFloatv(GL_MODELVIEW_MATRIX, view);
+        QMatrix4x4 mv = ModernShader::modelViewMatrix();
+        const float *view = mv.constData();
         Tuple3<float> rot(view[8], view[9], view[10]); // get z-vector of rotation mat
         if (rot.epsilonEquals(last_rot, 0.01f))
         {
@@ -309,9 +312,6 @@ public:
 
     void Draw()
     {
-        register unsigned int c1, c2, c3;
-        register unsigned int i;
-
         if (!triangles.size() || !vertices.size())
             return;
 
@@ -319,95 +319,47 @@ public:
         if (do_transparent)
             Resort();
 
-        glPushAttrib(GL_ALL_ATTRIB_BITS);
         glDisable(GL_CULL_FACE);  // we want to see the inside of clipped surfaces
-
-        // set up color material for surfaces
-        float ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        float diffuse[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        float emission[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-        float specular[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        int shininess = 128;
-        glDisable(GL_COLOR_MATERIAL);
-        glMaterialfv(GL_FRONT, GL_AMBIENT, ambient);
-        glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuse);
-        glMaterialfv(GL_FRONT, GL_EMISSION, emission);
-        glMaterialfv(GL_FRONT, GL_SPECULAR, specular);
-        glMateriali(GL_FRONT, GL_SHININESS, shininess);
-
-        glColorMaterial(GL_BACK, GL_AMBIENT_AND_DIFFUSE);
-        glColor4f(0.75, 0.75, 0.75, 1.0);
-        glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
-        glEnable(GL_COLOR_MATERIAL);
 
         if (do_transparent)
         {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
             glDepthMask(GL_FALSE);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
-            glEnable(GL_STENCIL_TEST);
-            glClearStencil(0);
-            glClear(GL_STENCIL_BUFFER_BIT);
-            glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
-            glStencilFunc(GL_EQUAL, 0, 1);
             glDepthFunc(GL_LEQUAL);
         }
 
-        glBegin(GL_TRIANGLES);
-        // avoid vector operator[] fn call overhead in loop
-        unsigned int *tri = &triangles[0];
-        float *verts = &vertices[0];
-        float *norms = &normals[0];
-        short *colr = &_color[0];
+        size_t nverts = vertices.size() / 3;
+        std::vector<ModernVertex> vboVerts(nverts);
+        const float *verts = &vertices[0];
+        const float *norms = &normals[0];
+        const short *colr = &_color[0];
+        bool useGrad = (MIGetSurfaceUseGradColor() && _prop_based_color.size() >= nverts * 4);
+        const float *gradColors = useGrad ? &_prop_based_color[0] : nullptr;
 
-        if (MIGetSurfaceUseGradColor() && _prop_based_color.size())
+        for (size_t v = 0; v < nverts; ++v)
         {
-            float *colors = &_prop_based_color[0];
-            size_t ntri = triangles.size();
-            for (i = 0; i < ntri; i += 3)
-            {
-                c1 = tri[i];
-                c2 = tri[i+1];
-                c3 = tri[i+2];
-
-                glColor4fv(&colors[c1*4]);
-                glNormal3fv(&norms[c1*3]);
-                glVertex3fv(&verts[c1*3]);
-
-                glColor4fv(&colors[c2*4]);
-                glNormal3fv(&norms[c2*3]);
-                glVertex3fv(&verts[c2*3]);
-
-                glColor4fv(&colors[c3*4]);
-                glNormal3fv(&norms[c3*3]);
-                glVertex3fv(&verts[c3*3]);
-            }
+            ModernVertex &out = vboVerts[v];
+            const float *c = useGrad ? &gradColors[v * 4] : getColor(colr[v]);
+            out = {
+                verts[v * 3 + 0], verts[v * 3 + 1], verts[v * 3 + 2],
+                norms[v * 3 + 0], norms[v * 3 + 1], norms[v * 3 + 2],
+                c[0], c[1], c[2], c[3],
+                0.0f, 0.0f
+            };
         }
-        else
+
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(true);
+        ModernShader::drawIndexed(GL_TRIANGLES, vboVerts.data(), vboVerts.size(), triangles.data(), triangles.size());
+        ModernShader::setLightingEnabled(prevLight);
+
+        if (do_transparent)
         {
-            size_t ntri = triangles.size();
-            for (i = 0; i < ntri; i += 3)
-            {
-                c1 = tri[i];
-                c2 = tri[i+1];
-                c3 = tri[i+2];
-
-                glColor4fv(getColor(colr[c1]));
-                glNormal3fv(&norms[c1*3]);
-                glVertex3fv(&verts[c1*3]);
-
-                glColor4fv(getColor(colr[c2]));
-                glNormal3fv(&norms[c2*3]);
-                glVertex3fv(&verts[c2*3]);
-
-                glColor4fv(getColor(colr[c3]));
-                glNormal3fv(&norms[c3*3]);
-                glVertex3fv(&verts[c3*3]);
-            }
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+            glDepthFunc(GL_LESS);
         }
-        glEnd();
-        glPopAttrib();
     }
 
     bool IsValid() const

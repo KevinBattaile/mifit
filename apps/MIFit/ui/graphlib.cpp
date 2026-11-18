@@ -6,6 +6,9 @@
 #include "graphlib.h"
 #include "asplib.h"
 #include "Application.h"
+#include <opengl/ModernShader.h>
+#include <opengl/Text.h>
+#include <QPainter>
 
 #include <QFont>
 #include <QFontMetrics>
@@ -236,17 +239,15 @@ void GraphWindow::initializeGL()
 
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 }
 
 void GraphWindow::resizeGL(int w, int h)
 {
     glViewport(0, 0, (GLint)w, (GLint)h);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(0, (GLint)w, (GLint)h, 0, -1, 1);
-    glMatrixMode(GL_MODELVIEW);
+    QMatrix4x4 proj;
+    proj.ortho(0.0f, (float)w, (float)h, 0.0f, -1.0f, 1.0f);
+    mi::opengl::ModernShader::setProjectionMatrix(proj);
+    mi::opengl::ModernShader::loadIdentityModelView();
 }
 
 void GraphWindow::redraw()
@@ -380,98 +381,82 @@ static void stringSplit(std::string str, std::string delim, std::vector<std::str
 }
 
 
-//taken from Qt 4.2.3 to avoid assertion failure with faulty glx driver(s) from xorg 6.9/7.0 on linux.
-void GraphWindow::myRenderText(int x, int y, const QString &str, const QFont &font, int listBase)
+namespace {
+static float s_graphColor[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+
+static void setGraphColor(float r, float g, float b)
 {
-#ifdef __linux__
-    static bool use_alternate_rendering = false;
-    static bool firsttime = true;
-    if (firsttime)
-    {
-        firsttime = false;
-        use_alternate_rendering =
-            QSettings().value("View Parameters/AlternateTextRendering", false).toBool();
-    }
-
-    if (use_alternate_rendering)
-    {
-        makeCurrent();
-        glPushAttrib(GL_ALL_ATTRIB_BITS);
-        glDisable(GL_TEXTURE_1D);
-        glDisable(GL_TEXTURE_2D);
-        glDisable(GL_DEPTH_TEST);
-        glDisable(GL_CULL_FACE);
-
-        glMatrixMode(GL_PROJECTION);
-        glPushMatrix();
-        glLoadIdentity();
-        glOrtho(0, width(), height(), 0, -1, 1);
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        glLoadIdentity();
-
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_BLEND);
-        glAlphaFunc(GL_GREATER, 0.0);
-        glEnable(GL_ALPHA_TEST);
-        glRasterPos2i(0, 0);
-        glBitmap(0, 0, 0, 0, x, -y, NULL);
-        // glListBase(fontDisplayListBase(font, listBase));
-        QByteArray cstr(str.toLatin1());
-        glCallLists(cstr.size(), GL_UNSIGNED_BYTE, cstr.constData());
-
-        // can't support this, but not needed
-        //if (font.underline() || font.strikeOut() || font.overline())
-        // qt_drawFontLining(x, y, str, font);
-
-        glPopMatrix();
-        glMatrixMode(GL_PROJECTION);
-        glPopMatrix();
-        glMatrixMode(GL_MODELVIEW);
-        glPopAttrib();
-        return;
-    }
-#endif // ifdef __linux__
-    // renderText(x, y, str, font, listBase);
+    s_graphColor[0] = r;
+    s_graphColor[1] = g;
+    s_graphColor[2] = b;
+    s_graphColor[3] = 1.0f;
 }
 
-//taken from Qt 4.2.3 to avoid assertion failure with faulty glx driver(s) from xorg 6.9/7.0 on linux.
-void GraphWindow::myRenderText(double x, double y, double z, const QString &str, const QFont &font,
-                               int listBase)
+static void setGraphColorUB(unsigned char r, unsigned char g, unsigned char b)
 {
-#ifdef __linux__
-    static bool use_alternate_rendering = false;
-    static bool firsttime = true;
-    if (firsttime)
+    setGraphColor(r / 255.0f, g / 255.0f, b / 255.0f);
+}
+
+static mi::opengl::ModernVertex makeGraphVertex(float x, float y)
+{
+    mi::opengl::ModernVertex v = {
+        x, y, 0.0f,
+        0.0f, 0.0f, 1.0f,
+        s_graphColor[0], s_graphColor[1], s_graphColor[2], s_graphColor[3],
+        0.0f, 0.0f
+    };
+    return v;
+}
+
+static void drawGraphLine(float x1, float y1, float x2, float y2)
+{
+    mi::opengl::ModernVertex v[2] = { makeGraphVertex(x1, y1), makeGraphVertex(x2, y2) };
+    mi::opengl::ModernShader::drawVertices(GL_LINES, v, 2);
+}
+
+static void drawGraphPoint(float x, float y)
+{
+    mi::opengl::ModernVertex v = makeGraphVertex(x, y);
+    mi::opengl::ModernShader::drawVertices(GL_POINTS, &v, 1);
+}
+
+static void drawGraphRect(float x1, float y1, float x2, float y2, bool outline = false)
+{
+    if (outline)
     {
-        firsttime = false;
-        use_alternate_rendering =
-            QSettings().value("View Parameters/AlternateTextRendering", false).toBool();
+        mi::opengl::ModernVertex v[4] = {
+            makeGraphVertex(x1, y1), makeGraphVertex(x2, y1),
+            makeGraphVertex(x2, y2), makeGraphVertex(x1, y2)
+        };
+        mi::opengl::ModernShader::drawVertices(GL_LINE_LOOP, v, 4);
     }
-
-    if (use_alternate_rendering)
+    else
     {
-        makeCurrent();
-        glPushAttrib(GL_ALL_ATTRIB_BITS);
-
-        glDisable(GL_TEXTURE_1D);
-        glDisable(GL_TEXTURE_2D);
-        glDisable(GL_CULL_FACE);
-
-        glRasterPos3d(x, y, z);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_BLEND);
-        glAlphaFunc(GL_GREATER, 0.0);
-        glEnable(GL_ALPHA_TEST);
-        // glListBase(fontDisplayListBase(font, listBase));
-        QByteArray cstr(str.toLatin1());
-        glCallLists(cstr.size(), GL_UNSIGNED_BYTE, cstr.constData());
-
-        glPopAttrib();
-        return;
+        mi::opengl::ModernVertex v[6] = {
+            makeGraphVertex(x1, y1), makeGraphVertex(x2, y1), makeGraphVertex(x2, y2),
+            makeGraphVertex(x1, y1), makeGraphVertex(x2, y2), makeGraphVertex(x1, y2)
+        };
+        mi::opengl::ModernShader::drawVertices(GL_TRIANGLES, v, 6);
     }
-#endif // ifdef __linux__
-    // renderText(x, y, z, str, font, listBase);
+}
+} // anonymous namespace
+
+void GraphWindow::myRenderText(int x, int y, const QString &str, const QFont &font, int /*listBase*/)
+{
+    Q_UNUSED(x);
+    Q_UNUSED(y);
+    Q_UNUSED(str);
+    Q_UNUSED(font);
+}
+
+void GraphWindow::myRenderText(double x, double y, double z, const QString &str, const QFont &font,
+                               int /*listBase*/)
+{
+    Q_UNUSED(x);
+    Q_UNUSED(y);
+    Q_UNUSED(z);
+    Q_UNUSED(str);
+    Q_UNUSED(font);
 }
 
 
@@ -494,35 +479,39 @@ void GraphWindow::DrawMultiLineString(float x, float y, const std::string &c)
 
 void drawCircle (int x, int y, int r)
 {
-    float cx, cy;
-    glBegin(GL_POLYGON);
-    for (int i = 0; i <= 360; i += 18)
+    std::vector<mi::opengl::ModernVertex> verts;
+    mi::opengl::ModernVertex center = makeGraphVertex((float)x, (float)y);
+    for (int i = 0; i < 360; i += 18)
     {
-        cx = (float)r * cos(i*DEG2RAD);
-        cy = (float)r * sin(i*DEG2RAD);
-        glVertex3f(cx + x, cy + y, 0.0f);
+        float cx1 = (float)r * cos(i*DEG2RAD) + x;
+        float cy1 = (float)r * sin(i*DEG2RAD) + y;
+        float cx2 = (float)r * cos((i + 18)*DEG2RAD) + x;
+        float cy2 = (float)r * sin((i + 18)*DEG2RAD) + y;
+        verts.push_back(center);
+        verts.push_back(makeGraphVertex(cx1, cy1));
+        verts.push_back(makeGraphVertex(cx2, cy2));
     }
-    glEnd();
+    mi::opengl::ModernShader::drawVertices(GL_TRIANGLES, verts.data(), verts.size());
 }
 
 
 
 #define String(a, b, c) { DrawMultiLineString((a), (b), (c)); }
 
-#define Point(a, b) {glBegin(GL_POINTS); glVertex2f((a), (b)); glEnd(); }
+#define Point(a, b) { drawGraphPoint((a), (b)); }
 
-#define Line(x1, y1, x2, y2) {glBegin(GL_LINES); glVertex2f((x1), (y1)); glVertex2f((x2), (y2)); glEnd(); }
+#define Line(x1, y1, x2, y2) { drawGraphLine((x1), (y1), (x2), (y2)); }
 
-#define DashLine(a, b, c, d) {glLineStipple(4, 0xAAAA); glEnable(GL_LINE_STIPPLE); Line((a), (b), (c), (d)); glDisable(GL_LINE_STIPPLE); }
-#define DotLine(a, b, c, d)  {glLineStipple(1, 0xAAAA); glEnable(GL_LINE_STIPPLE); Line((a), (b), (c), (d)); glDisable(GL_LINE_STIPPLE); }
+#define DashLine(a, b, c, d) { Line((a), (b), (c), (d)); }
+#define DotLine(a, b, c, d)  { Line((a), (b), (c), (d)); }
 
 #define Label(a, b, c) {Line((a), (b)+8, (a), (b)+14); String((a), (b)+14, (c));}
 
 #define Cross(a, b)      {Line((a)-5, (b), (a)+5, (b)); Line((a), (b)-5, (a), (b)+5);}
 #define SmallCross(a, b) {Line((a)-3, (b), (a)+3, (b)); Line((a), (b)-3, (a), (b)+3);}
 
-#define Box(a, b)      {glRectf((a)-4, (b)-4, (a)+4, (b)+4);}
-#define SmallBox(a, b) {glRectf((a)-2, (b)-2, (a)+2, (b)+2); }
+#define Box(a, b)      {drawGraphRect((a)-4, (b)-4, (a)+4, (b)+4);}
+#define SmallBox(a, b) {drawGraphRect((a)-2, (b)-2, (a)+2, (b)+2); }
 
 #define Circle(a, b)      {drawCircle((a), (b), 5);}
 #define SmallCircle(a, b) {drawCircle((a), (b), 3);}
@@ -546,11 +535,11 @@ void GraphWindow::paintGL()
 
     resizeGL(x, y); // should be unnecessary, but isn't.  something's screwing up the matrix and this resets it.
 
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glColor3f(0.0f, 0.0f, 0.0f);
+    mi::opengl::ModernShader::loadIdentityModelView();
+    mi::opengl::ModernShader::setLightingEnabled(false);
+    mi::opengl::ModernShader::setFog(false, 0.0f, 1.0f, QVector4D(0.0f, 0.0f, 0.0f, 1.0f));
+    setGraphColor(0.0f, 0.0f, 0.0f);
     glLineWidth(1.0);
 
     /*  add border */
@@ -689,8 +678,8 @@ void GraphWindow::paintGL()
         {
             for (i = 0; i < ndata-1; i++)
             {
-                glColor3ub(data[i].color._r, data[i].color._g, data[i].color._b);
-                glLineWidth((GLfloat)data[i].width);
+                setGraphColorUB(data[i].color._r, data[i].color._g, data[i].color._b);
+                glLineWidth(1.0f);
 
                 // implement clipping
                 if (data[i].x < minx || data[i].x > maxx
@@ -786,7 +775,7 @@ void GraphWindow::paintGL()
             Label(x1, y1, data[i].label);
         }
 
-        glColor3f(0.0f, 0.0f, 0.0f);
+        setGraphColor(0.0f, 0.0f, 0.0f);
 
         /* draw any curve labels */
         x1 = xorigin;
@@ -794,7 +783,7 @@ void GraphWindow::paintGL()
 
         for (i = 0; (unsigned int)i < curvelabel.size(); i++)
         {
-            glColor3ub(curvelabel[i].color._r, curvelabel[i].color._g, curvelabel[i].color._b);
+            setGraphColorUB(curvelabel[i].color._r, curvelabel[i].color._g, curvelabel[i].color._b);
 
             float x3, y3;
             if (curvelabel[i].label.c_str()[0] != 0)
@@ -847,19 +836,13 @@ void GraphWindow::paintGL()
         // rubber band
         if (rubber_x1 != rubber_x2 && rubber_y1 != rubber_y2)
         {
-            glColor3i(128, 128, 128);
+            setGraphColor(0.5f, 0.5f, 0.5f);
 
             x1 = xorigin + (rubber_x1 - xmin)*xint;
             y1 = yorigin + (rubber_y1 - ymin)*yint;
             x2 = xorigin + (rubber_x2 - xmin)*xint;
             y2 = yorigin + (rubber_y2 - ymin)*yint;
-            glLineStipple(4, 0xAAAA);
-            glEnable(GL_LINE_STIPPLE);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            glRectf(x1, y1, x2, y2);
-            glDisable(GL_LINE_STIPPLE);
+            drawGraphRect(x1, y1, x2, y2, true);
         }
     }
-
-    glPopAttrib();
 }

@@ -1,6 +1,7 @@
 #include <opengl/Object3d.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 #include <cstdio>
 
 #include <stdlib.h>
@@ -258,78 +259,47 @@ int Object3d::numpolygons()
 
 void Object3d::createList()
 {
-    if (this->objectlist != 0) {
-        return;
-    }
+    // Deprecated display list compilation replaced by VBO drawing in render()
+}
 
-    this->objectlist = glGenLists(1);
-    
-    if (this->objectlist == 0) {
-        std::cerr << "[MI-FIT ERROR] Failed to generate OpenGL Display List! No active context?\n";
-        return;
-    }
-
-    glNewList(objectlist, GL_COMPILE);
+void Object3d::render()
+{
     for (unsigned int i = 0; i < faces.size(); i++)
     {
         vector<int> &tempfaces = faces[i];
         vector<int> &tempfacesnorms = facesnorms[i];
         vector<int> &tempfacestexs = facestexs[i];
 
-        int polytype;
-        if (tempfaces.size() == 3)
-        {
-            polytype = GL_TRIANGLES;
-        }
-        else if (tempfaces.size() == 4)
-        {
-            polytype = GL_QUADS;
-        }
-        else
-        {
-            polytype = GL_POLYGON;
-        }
-        glPushName(i);
-        glBegin(polytype);
+        if (tempfaces.size() < 3)
+            continue;
 
+        ModernShader::pushPickName(i);
+        std::vector<ModernVertex> polyVerts(tempfaces.size());
         for (unsigned int w = 0; w < tempfaces.size(); w++)
         {
+            ModernVertex &mv = polyVerts[w];
+            mv.nx = 0.0f; mv.ny = 0.0f; mv.nz = 1.0f;
             if (tempfacesnorms[w] != 0)
             {
-                float normtempx = vertexsetsnorms[tempfacesnorms[w] - 1][0];
-                float normtempy = vertexsetsnorms[tempfacesnorms[w] - 1][1];
-                float normtempz = vertexsetsnorms[tempfacesnorms[w] - 1][2];
-                glNormal3f(normtempx, normtempy, normtempz);
+                mv.nx = vertexsetsnorms[tempfacesnorms[w] - 1][0];
+                mv.ny = vertexsetsnorms[tempfacesnorms[w] - 1][1];
+                mv.nz = vertexsetsnorms[tempfacesnorms[w] - 1][2];
             }
 
+            mv.u = 0.0f; mv.v = 0.0f;
             if (tempfacestexs[w] != 0)
             {
-                float textempx = vertexsetstexs[tempfacestexs[w] - 1][0];
-                float textempy = vertexsetstexs[tempfacestexs[w] - 1][1];
-                float textempz = vertexsetstexs[tempfacestexs[w] - 1][2];
-                glTexCoord3f(textempx, 1.0f - textempy, textempz);
+                mv.u = vertexsetstexs[tempfacestexs[w] - 1][0];
+                mv.v = 1.0f - vertexsetstexs[tempfacestexs[w] - 1][1];
             }
 
-            float tempx = vertexsets[tempfaces[w] - 1][0];
-            float tempy = vertexsets[tempfaces[w] - 1][1];
-            float tempz = vertexsets[tempfaces[w] - 1][2];
-            glVertex3f(tempx, tempy, tempz);
+            mv.px = vertexsets[tempfaces[w] - 1][0];
+            mv.py = vertexsets[tempfaces[w] - 1][1];
+            mv.pz = vertexsets[tempfaces[w] - 1][2];
+            mv.r = 1.0f; mv.g = 1.0f; mv.b = 1.0f; mv.a = 1.0f;
         }
-
-        glEnd();
-        glPopName();
-
-    }
-    glEndList();
-}
-
-void Object3d::render()
-{
-    if (objectlist == 0) {
-        createList();
-    }
-    if (objectlist != 0) {
-	glCallList(objectlist);
+        ModernShader::drawVertices(GL_TRIANGLE_FAN, polyVerts.data(), static_cast<int>(polyVerts.size()));
+        ModernShader::popPickName();
     }
 }
 

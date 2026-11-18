@@ -2,6 +2,7 @@
 
 #include <opengl/Arc.h>
 #include <opengl/Circle.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 
 using namespace mi::math;
@@ -26,21 +27,15 @@ ArcBallFeedback::ArcBallFeedback(float radius, float *color)
 
 void ArcBallFeedback::render()
 {
-
-    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_COLOR_BUFFER_BIT);
-    glShadeModel(GL_FLAT);
-    glDisable(GL_FOG);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glDisable(GL_DEPTH_TEST);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_COLOR_MATERIAL);
 
-    glColor3f(ballColor.x, ballColor.y, ballColor.z);
     ball->render();
-    glColor3f(arcColor.x, arcColor.y, arcColor.z);
     arc->render();
 
-    glPopAttrib();
-
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void ArcBallFeedback::setRadius(float radius)

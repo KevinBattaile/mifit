@@ -17,6 +17,7 @@
 #include <math/Quaternion.h>
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/QuatUtil.h>
 #include <opengl/Sphere.h>
@@ -870,22 +871,17 @@ void MIGLWidget::initializeGL()
     PaletteColor c = Application::instance()->GetBackgroundColor();
     glClearColor(c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, 1.0f);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
+    ModernShader::setLightingEnabled(true);
 }
 
 void MIGLWidget::resizeGL(int w, int h)
 {
     glViewport(0, 0, w, h);
-    
-    // Set up the 3D perspective / orthographic projection matrix
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    
     double aspect = (double)w / (double)(h ? h : 1);
-    glOrtho(-50.0 * aspect, 50.0 * aspect, -50.0, 50.0, -1000.0, 1000.0);
-    
-    glMatrixMode(GL_MODELVIEW);
+    QMatrix4x4 proj;
+    proj.ortho(-50.0f * aspect, 50.0f * aspect, -50.0f, 50.0f, -1000.0f, 1000.0f);
+    ModernShader::setProjectionMatrix(proj);
+    ModernShader::loadIdentityModelView();
 }
 
 void MIGLWidget::paintGL()
@@ -894,12 +890,8 @@ void MIGLWidget::paintGL()
     glClearColor(c.red / 255.0f, c.green / 255.0f, c.blue / 255.0f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-
-    QPainter painter(this);
-    draw(&painter);
-    painter.end();
+    ModernShader::loadIdentityModelView();
+    draw(nullptr);
 }
 
 void MIGLWidget::draw(QPainter *painter)
@@ -909,22 +901,16 @@ void MIGLWidget::draw(QPainter *painter)
         painter->save();
         painter->beginNativePainting();
     }
-    glPushAttrib(GL_ALL_ATTRIB_BITS);
-    glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glUseProgram(0);
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
+    ModernShader::setLightingEnabled(true);
     glViewport(0, 0, this->width(), this->height());
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
+    ModernShader::pushProjection();
     double aspect = (double)this->width() / (double)(this->height() ? this->height() : 1);
-    glOrtho(-50.0 * aspect, 50.0 * aspect, -50.0, 50.0, -1000.0, 1000.0);
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
+    QMatrix4x4 proj;
+    proj.ortho(-50.0f * aspect, 50.0f * aspect, -50.0f, 50.0f, -1000.0f, 1000.0f);
+    ModernShader::setProjectionMatrix(proj);
+    ModernShader::pushModelView();
+    ModernShader::loadIdentityModelView();
 
     is_drawing = true;
     Displaylist *Models = GetDisplaylist();
@@ -1064,12 +1050,8 @@ void MIGLWidget::draw(QPainter *painter)
 #endif
 
     is_drawing = false;
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-    glPopMatrix();
-    glPopClientAttrib();
-    glPopAttrib();
+    ModernShader::popProjection();
+    ModernShader::popModelView();
     if (painter)
     {
         painter->endNativePainting();

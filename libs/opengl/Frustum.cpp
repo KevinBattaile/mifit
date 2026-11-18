@@ -2,6 +2,8 @@
 
 #include <opengl/Viewport.h>
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
+#include <QMatrix4x4>
 
 using namespace mi::math;
 
@@ -155,32 +157,38 @@ void Frustum::render(Viewport &viewport)
 
 void Frustum::render(Viewport &viewport, float offset)
 {
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
+    QMatrix4x4 proj;
 
     if (picking)
     {
-        GLint vp[4];
-        int *vpi = viewport.toArray();
-        for (unsigned int i = 0; i < 4; ++i)
-        {
-            vp[i] = vpi[i];
-        }
-        gluPickMatrix(pickPointX, viewport.getHeight() - pickPointY, 5.0f, 5.0f, vp);
+        // Replicate gluPickMatrix(pickPointX, viewport.getHeight() - pickPointY, 5.0f, 5.0f, vp)
+        float vx = static_cast<float>(viewport.getX());
+        float vy = static_cast<float>(viewport.getY());
+        float vw = static_cast<float>(viewport.getWidth() > 0 ? viewport.getWidth() : 1);
+        float vh = static_cast<float>(viewport.getHeight() > 0 ? viewport.getHeight() : 1);
+        float px = static_cast<float>(pickPointX);
+        float py = vh - static_cast<float>(pickPointY);
+        float delX = 5.0f;
+        float delY = 5.0f;
+
+        proj.translate((vw - 2.0f * (px - vx)) / delX,
+                       (vh - 2.0f * (py - vy)) / delY,
+                       0.0f);
+        proj.scale(vw / delX, vh / delY, 1.0f);
     }
 
     updateFrustum(viewport);
 
     if (perspective)
     {
-        glFrustum(frustumLeft + offset, frustumRight + offset, frustumBottom, frustumTop, nearClipping, farClipping);
+        proj.frustum(frustumLeft + offset, frustumRight + offset, frustumBottom, frustumTop, nearClipping, farClipping);
     }
     else
     {
-        glOrtho(frustumLeft + offset, frustumRight + offset, frustumBottom, frustumTop, nearClipping, farClipping);
+        proj.ortho(frustumLeft + offset, frustumRight + offset, frustumBottom, frustumTop, nearClipping, farClipping);
     }
 
-    glMatrixMode(GL_MODELVIEW);
+    ModernShader::setProjectionMatrix(proj);
 }
 
 void Frustum::setHeight(float height)
@@ -273,15 +281,12 @@ static float getMatrixValue(float *result, int row, int col)
 
 void Frustum::updatePlanes()
 {
-
-    glGetFloatv(GL_PROJECTION_MATRIX, projection);
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
-
-    glPushMatrix();
-    glLoadMatrixf(projection);
-    glMultMatrixf(modelview);
-    glGetFloatv(GL_MODELVIEW_MATRIX, planesMatrix);
-    glPopMatrix();
+    QMatrix4x4 proj = ModernShader::projectionMatrix();
+    QMatrix4x4 mv = ModernShader::modelViewMatrix();
+    QMatrix4x4 pm = proj * mv;
+    memcpy(projection, proj.constData(), 16 * sizeof(float));
+    memcpy(modelview, mv.constData(), 16 * sizeof(float));
+    memcpy(planesMatrix, pm.constData(), 16 * sizeof(float));
 
     planes[NEARPLANE]->setCoefficients(getMatrixValue(planesMatrix, 3, 1) + getMatrixValue(planesMatrix, 4, 1),
                                        getMatrixValue(planesMatrix, 3, 2) + getMatrixValue(planesMatrix, 4, 2), getMatrixValue(planesMatrix, 3, 3)

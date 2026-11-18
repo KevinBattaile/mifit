@@ -1,9 +1,11 @@
 #include <opengl/Circle.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 #include <math/mathlib.h>
 #include <cmath>
 #include <cstdlib>
+#include <vector>
 
 namespace mi
 {
@@ -71,23 +73,19 @@ void Circle::setAngle(float angle)
 
 void Circle::render()
 {
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
 
-    glPushAttrib(GL_ENABLE_BIT);
-    glDisable(GL_TEXTURE_2D);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_BLEND);
-
-    glBegin(GL_LINE_STRIP);
-
+    std::vector<ModernVertex> verts(detail + 1);
     for (int i = 0; i <= detail; i++)
     {
         float x = radius * (float) std::cos(i * angle / detail);
         float y = radius * (float) std::sin(i * angle / detail);
-        glVertex3f(x, y, 0.0f);
+        verts[i] = { x, y, 0.0f, 0.0f, 0.0f, 1.0f, 0.8f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f };
     }
+    ModernShader::drawVertices(GL_LINE_STRIP, verts.data(), static_cast<int>(verts.size()));
 
-    glEnd();
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 }

@@ -6,6 +6,7 @@
 #include <opengl/Light.h>
 #include <opengl/OpenGL.h>
 #include <opengl/Text.h>
+#include <opengl/ModernShader.h>
 
 #include <map/maplib.h>
 #include "core/corelib.h"
@@ -50,13 +51,13 @@ public:
     PushedName(GLuint name, bool enabled) : enabled(enabled)
     {
         if (enabled)
-            glPushName(name);
+            ModernShader::pushPickName(name);
     }
 
     ~PushedName()
     {
         if (enabled)
-            glPopName();
+            ModernShader::popPickName();
     }
 };
 
@@ -92,17 +93,17 @@ GLRenderer::GLRenderer()
     light2->setSpecularColor(0.0f, 0.0f, 0.0f, 1.0f);
     Vector4<float> lightPosition2(0.0f, 150.0f, 10.0f, 0.0f);
     light2->setPosition(lightPosition2);
+
+    currentColor[0] = 1.0f;
+    currentColor[1] = 1.0f;
+    currentColor[2] = 1.0f;
+    currentColor[3] = 1.0f;
 }
 
 GLRenderer::~GLRenderer()
 {
     delete light;
     delete light2;
-    for (std::map<void*, GLUquadric*>::iterator i = quad.begin();
-         i!=quad.end(); ++i)
-    {
-        gluDeleteQuadric(i->second);
-    }
 }
 
 void GLRenderer::setViewVector(const Vector3<float> &viewVector)
@@ -122,42 +123,29 @@ void GLRenderer::renderFog()
 {
     if (fogEnabled)
     {
-        float fogColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-        glEnable(GL_FOG);
-        glFogfv(GL_FOG_COLOR, fogColor);
-        glFogf(GL_FOG_START, fogStart);
-        glFogf(GL_FOG_END, fogEnd);
-        glFogi(GL_FOG_MODE, GL_LINEAR);
+        ModernShader::setFog(true, fogStart, fogEnd, QVector4D(0.2f, 0.2f, 0.2f, 1.0f));
     }
     else
     {
-        glDisable(GL_FOG);
+        ModernShader::setFog(false, fogStart, fogEnd, QVector4D(0.2f, 0.2f, 0.2f, 1.0f));
     }
 }
 
 void GLRenderer::initializeForRender()
 {
-
     glEnable(GL_DEPTH_TEST);
     if (useClockwiseFrontFaces)
     {
         glFrontFace(GL_CW);
     }
     glEnable(GL_CULL_FACE);
-    glEnable(GL_LIGHTING);
-    glEnable(GL_NORMALIZE);
-
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    ModernShader::setLightingEnabled(true);
 }
 
 void GLRenderer::renderLight()
 {
     light->glEnable();
     light->render();
-    light2->glEnable();
-    light2->render();
-    light2->glDisable();
 }
 
 
@@ -223,14 +211,16 @@ void GLRenderer::applyProjection(float scale)
     // Maintain square perspective regardless of window aspect ratio
     float widthRange = xyDisplayRange / scale;
     float aspectRatio = (float)width / (float)height;
+    QMatrix4x4 proj;
     if (width <= height)
     {
-        glOrtho(-widthRange, widthRange, -widthRange / aspectRatio, widthRange / aspectRatio, 0.0, 2.0*zDisplayRange);
+        proj.ortho(-widthRange, widthRange, -widthRange / aspectRatio, widthRange / aspectRatio, 0.0f, 2.0f * zDisplayRange);
     }
     else
     {
-        glOrtho(-widthRange * aspectRatio, widthRange * aspectRatio, -widthRange, widthRange, 0.0, 2.0*zDisplayRange);
+        proj.ortho(-widthRange * aspectRatio, widthRange * aspectRatio, -widthRange, widthRange, 0.0f, 2.0f * zDisplayRange);
     }
+    ModernShader::setProjectionMatrix(proj);
 }
 
 void GLRenderer::Draw2(Displaylist *displaylist, bool ShowVus, bool /* drawMapsFirst */, bool showSymmetryAsBackbone)
@@ -239,15 +229,7 @@ void GLRenderer::Draw2(Displaylist *displaylist, bool ShowVus, bool /* drawMapsF
     logOpenGLErrors(__FILE__, __LINE__);
     computeBounds(displaylist->getMolecules());
 
-    //float zDisplayRange = xyDisplayRange;
-
-    float specularMaterial[4] = {1.0f, 1.0f, 1.0f, 1.0f};
-    glMaterialfv(GL_FRONT, GL_SPECULAR, specularMaterial);
-    glMateriali(GL_FRONT, GL_SHININESS, 8);
-
-    glShadeModel(GL_SMOOTH);
-
-    glPushMatrix();
+    ModernShader::pushModelView();
     logOpenGLErrors(__FILE__, __LINE__);
 
     DrawMaps(displaylist->getMaps());
@@ -287,17 +269,16 @@ void GLRenderer::Draw2(Displaylist *displaylist, bool ShowVus, bool /* drawMapsF
         drawSurface(displaylist->getCurrentDots());
         if ((*node)->getSecondaryStructure() != NULL)
         {
-            glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT);
             glDisable(GL_CULL_FACE);
             DrawSecondaryStructure((*node)->getSecondaryStructure());
-            glPopAttrib();
+            glEnable(GL_CULL_FACE);
         }
 
         node++;
     }
     logOpenGLErrors(__FILE__, __LINE__);
 
-    glPopMatrix();
+    ModernShader::popModelView();
 
     logOpenGLErrors(__FILE__, __LINE__);
 }
@@ -354,14 +335,11 @@ void GLRenderer::DrawRibbonSegment(RibbonSegment *ribbonSegment)
 
 void GLRenderer::SetColor(unsigned char *bRGBA)
 {
-    //Set the new color
-    //glColor3b (m_bRGBA[0], m_bRGBA[1], m_bRGBA[2]); //OpenGL uses signed bytes!
-    float fColor[3];
     for (int i = 0; i < 3; i++)
     {
-        fColor[i] = (float)bRGBA[i]/255.0;
+        currentColor[i] = (float)bRGBA[i] / 255.0f;
     }
-    glColor3f(fColor[0], fColor[1], fColor[2]);
+    currentColor[3] = 1.0f;
 }
 
 void GLRenderer::DrawRibbonSpan(RibbonSpan *ribbonSpan)
@@ -377,122 +355,97 @@ void GLRenderer::DrawHelix(Helix *helix)
 
 void GLRenderer::DrawPolySurf(int npr, int nseg, double dPoints[][3], double dNorms[][3])
 {
-    //Make sure we are in material mode
-    //  if (m_iColorMode != SSI_MATERIAL)
-    //    SetColorMode (SSI_MATERIAL);
+    if (npr <= 0 || nseg <= 1)
+        return;
 
-    //glBegin (GL_QUADS);
-    glBegin(GL_TRIANGLES);
-    for (int i = 0; i < npr; i++) // Begin for each parametric step
+    std::vector<ModernVertex> verts;
+    verts.reserve(npr * (nseg - 1) * 6);
+    auto addV = [&](int idx) {
+        ModernVertex v;
+        v.px = static_cast<float>(dPoints[idx][0]);
+        v.py = static_cast<float>(dPoints[idx][1]);
+        v.pz = static_cast<float>(dPoints[idx][2]);
+        v.nx = static_cast<float>(dNorms[idx][0]);
+        v.ny = static_cast<float>(dNorms[idx][1]);
+        v.nz = static_cast<float>(dNorms[idx][2]);
+        v.r = currentColor[0]; v.g = currentColor[1]; v.b = currentColor[2]; v.a = currentColor[3];
+        v.u = 0.0f; v.v = 0.0f;
+        verts.push_back(v);
+    };
+
+    for (int i = 0; i < npr; i++)
     {
-        for (int k = 0; k < nseg-1; k++) // Begin for each point in the ribbon
+        for (int k = 0; k < nseg - 1; k++)
         {
-            int ip0 = i*nseg+k;
-            int ip1;
-            if (i == npr-1)
-            {
-                ip1 = k;
-            }
-            else
-            {
-                ip1 = (i+1)*nseg+k;
-            }
-            int ip2 = ip1+1;
-            int ip3 = ip0+1;
+            int ip0 = i * nseg + k;
+            int ip1 = (i == npr - 1) ? k : (i + 1) * nseg + k;
+            int ip2 = ip1 + 1;
+            int ip3 = ip0 + 1;
 
-            glNormal3dv(dNorms[ip0]);
-            glVertex3dv(dPoints[ip0]);
-            glNormal3dv(dNorms[ip1]);
-            glVertex3dv(dPoints[ip1]);
-            glNormal3dv(dNorms[ip3]);
-            glVertex3dv(dPoints[ip3]);
-            glNormal3dv(dNorms[ip3]);
-            glVertex3dv(dPoints[ip3]);
-            glNormal3dv(dNorms[ip1]);
-            glVertex3dv(dPoints[ip1]);
-            glNormal3dv(dNorms[ip2]);
-            glVertex3dv(dPoints[ip2]);
-            /*
-               glNormal3dv (dNorms[ip0]);
-               glVertex3dv (dPoints[ip0]);
-               glNormal3dv (dNorms[ip1]);
-               glVertex3dv (dPoints[ip1]);
-               glNormal3dv (dNorms[ip2]);
-               glVertex3dv (dPoints[ip2]);
-               glNormal3dv (dNorms[ip3]);
-               glVertex3dv (dPoints[ip3]);
-             */
+            addV(ip0);
+            addV(ip1);
+            addV(ip3);
+            addV(ip3);
+            addV(ip1);
+            addV(ip2);
         }
-    }  // End for each parametric step
-    glEnd();
+    }
+    ModernShader::drawVertices(GL_TRIANGLES, verts.data(), static_cast<int>(verts.size()));
 }
 
 void GLRenderer::DrawCappedCylinder(int nSeg, double dAxisA[3], double dAxisB[3], double dEndA[][3], double dEndB[][3],
                                     double dNormA[][3], double dNormB[][3], double dCapNormA[][3], double dCapNormB[][3])
 {
-    //Make sure we are in material mode
-    //  if (m_iColorMode != SSI_MATERIAL)
-    //    SetColorMode (SSI_MATERIAL);
+    if (nSeg <= 0)
+        return;
 
-    //First draw the cylinder
-    //Construct the quadrilaterals
-    glBegin(GL_QUADS);
+    std::vector<ModernVertex> verts;
+    verts.reserve(nSeg * 12);
+    auto addV = [&](const double pt[3], const double nm[3]) {
+        ModernVertex v;
+        v.px = static_cast<float>(pt[0]);
+        v.py = static_cast<float>(pt[1]);
+        v.pz = static_cast<float>(pt[2]);
+        v.nx = static_cast<float>(nm[0]);
+        v.ny = static_cast<float>(nm[1]);
+        v.nz = static_cast<float>(nm[2]);
+        v.r = currentColor[0]; v.g = currentColor[1]; v.b = currentColor[2]; v.a = currentColor[3];
+        v.u = 0.0f; v.v = 0.0f;
+        verts.push_back(v);
+    };
+
     int i;
     for (i = 0; i < nSeg; i++)
     {
-        int j = i+1;
-        if (j >= nSeg)
-        {
-            j = 0;
-        }
-        glNormal3dv(dNormA[i]);
-        glVertex3dv(dEndA[i]);
-        glNormal3dv(dNormB[i]);
-        glVertex3dv(dEndB[i]);
-        glNormal3dv(dNormB[j]);
-        glVertex3dv(dEndB[j]);
-        glNormal3dv(dNormA[j]);
-        glVertex3dv(dEndA[j]);
+        int j = (i + 1 >= nSeg) ? 0 : i + 1;
+        addV(dEndA[i], dNormA[i]);
+        addV(dEndB[i], dNormB[i]);
+        addV(dEndB[j], dNormB[j]);
+
+        addV(dEndA[i], dNormA[i]);
+        addV(dEndB[j], dNormB[j]);
+        addV(dEndA[j], dNormA[j]);
     }
-    glEnd();
 
-    //Now do the caps
-    glBegin(GL_TRIANGLES);
-
-    //Top A
+    // Top A
     for (i = 0; i < nSeg; i++)
     {
-        int j = i+1;
-        if (j >= nSeg)
-        {
-            j = 0;
-        }
-
-        glNormal3dv(dCapNormA[i]);
-        glVertex3dv(dAxisA);
-        glNormal3dv(dCapNormA[j]);
-        glVertex3dv(dEndA[j]);
-        glNormal3dv(dCapNormA[i]);
-        glVertex3dv(dEndA[i]);
+        int j = (i + 1 >= nSeg) ? 0 : i + 1;
+        addV(dAxisA, dCapNormA[i]);
+        addV(dEndA[j], dCapNormA[j]);
+        addV(dEndA[i], dCapNormA[i]);
     }
 
-    //Bottom B (note reverse order)
+    // Bottom B
     for (i = 0; i < nSeg; i++)
     {
-        int j = i+1;
-        if (j >= nSeg)
-        {
-            j = 0;
-        }
-
-        glNormal3dv(dCapNormB[i]);
-        glVertex3dv(dAxisB);
-        glNormal3dv(dCapNormB[i]);
-        glVertex3dv(dEndB[i]);
-        glNormal3dv(dCapNormB[j]);
-        glVertex3dv(dEndB[j]);
+        int j = (i + 1 >= nSeg) ? 0 : i + 1;
+        addV(dAxisB, dCapNormB[i]);
+        addV(dEndB[i], dCapNormB[i]);
+        addV(dEndB[j], dCapNormB[j]);
     }
-    glEnd();
+
+    ModernShader::drawVertices(GL_TRIANGLES, verts.data(), static_cast<int>(verts.size()));
 }
 
 void GLRenderer::DrawMaps(std::vector<EMap*> &maps)
@@ -515,10 +468,9 @@ void GLRenderer::DrawMaps(std::vector<EMap*> &maps)
 
 void GLRenderer::DrawLabels(std::list<Molecule*> &molecules)
 {
-
     // Collect and sort labels for proper transparency
     float view[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, view);
+    memcpy(view, ModernShader::modelViewMatrix().constData(), 16 * sizeof(float));
     Matrix4<float> viewmat(view);
     viewmat.transpose();
 
@@ -565,85 +517,62 @@ void GLRenderer::drawText(const char *text, float x, float y, float z, float off
     if (!labelsFont_.get())
         return;
 
-    glPushMatrix();
-    // Position at coordintes.
-    glTranslatef(x, y, z);
+    ModernShader::pushModelView();
+    ModernShader::translateModelView(x, y, z);
+    ModernShader::multModelView(inverseRotation);
+    ModernShader::translateModelView(offset, offset, offset);
+    ModernShader::scaleModelView(scale, scale, 1.0f);
 
-    // Keep oriented toward camera.
-    glMultMatrixf(inverseRotation);
-
-    // Offset position.
-    glTranslatef(offset, offset, offset);
-    // Scale size.
-    glScalef(scale, scale, 1.0f);
-
-    glPushAttrib(GL_CURRENT_BIT | GL_LINE_BIT | GL_ENABLE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
 
     if (displayNumber)
     {
-        glPushAttrib(GL_CURRENT_BIT);
         QString numberString = QString(" %1 ").arg(number);
         float numberWidth = labelsFont_->fontMetrics().horizontalAdvance(numberString);
-        glColor3f(1.0f, 1.0f, 0.0f);
         float x1 = 0.0f;
         float y1 = -labelsFont_->fontMetrics().descent();
         float x2 = numberWidth;
         float y2 = labelsFont_->fontMetrics().ascent();
-        float z = -0.02f;
-        glBegin(GL_QUADS);
-        glVertex3f(x1, y1, z);
-        glVertex3f(x2, y1, z);
-        glVertex3f(x2, y2, z);
-        glVertex3f(x1, y2, z);
-        glEnd();
+        float z1 = -0.02f;
+
+        ModernVertex boxVerts[12] = {
+            { x1, y1, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 },
+            { x2, y1, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 },
+            { x2, y2, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 },
+            { x1, y1, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 },
+            { x2, y2, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 },
+            { x1, y2, z1, 0, 0, 1, 1.0f, 1.0f, 0.0f, 1.0f, 0, 0 }
+        };
         float xOffset = (x2 - x1) / 10.0f;
         float yOffset = (y2 - y1) / 10.0f;
-        x1 += xOffset;
-        y1 += yOffset;
-        x2 -= xOffset;
-        y2 -= yOffset;
-        z += 0.01f;
-        glColor3f(1.0f, 0.0f, 0.0f);
-        glBegin(GL_QUADS);
-        glVertex3f(x1, y1, z);
-        glVertex3f(x2, y1, z);
-        glVertex3f(x2, y2, z);
-        glVertex3f(x1, y2, z);
-        glEnd();
+        float ix1 = x1 + xOffset, iy1 = y1 + yOffset;
+        float ix2 = x2 - xOffset, iy2 = y2 - yOffset;
+        float z2 = z1 + 0.01f;
+        boxVerts[6]  = { ix1, iy1, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        boxVerts[7]  = { ix2, iy1, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        boxVerts[8]  = { ix2, iy2, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        boxVerts[9]  = { ix1, iy1, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        boxVerts[10] = { ix2, iy2, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        boxVerts[11] = { ix1, iy2, z2, 0, 0, 1, 1.0f, 0.0f, 0.0f, 1.0f, 0, 0 };
+        ModernShader::drawVertices(GL_TRIANGLES, boxVerts, 12);
 
-        glEnable(GL_TEXTURE_2D);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glPushMatrix();
-        labelsFont_->renderText(0, 0, numberString);
-        glPopMatrix();
-
-        glTranslatef(numberWidth, 0.0f, 0.0f);
-        glPopAttrib();
+        labelsFont_->renderText(0, 0, numberString, white);
+        ModernShader::translateModelView(numberWidth, 0.0f, 0.0f);
     }
 
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    glEnable(GL_TEXTURE_2D);
+    labelsFont_->renderText(0, 0, QString(text), foreground);
 
-    glColor4fv(foreground);
-    glPushMatrix();
-    labelsFont_->renderText(0, 0, QString(text));
-    glPopMatrix();
-
-    glPopAttrib();
-    glPopMatrix();
+    ModernShader::setLightingEnabled(prevLight);
+    ModernShader::popModelView();
 }
 
 void GLRenderer::getInverseRotation(float inverseRotation[16])
 {
     static GLfloat modelview[16];
-    glGetFloatv(GL_MODELVIEW_MATRIX, modelview);
+    memcpy(modelview, ModernShader::modelViewMatrix().constData(), 16 * sizeof(float));
     Matrix4<float> matrix(modelview);
     Quaternion<float> quat;
     quat.set(matrix);
@@ -663,9 +592,8 @@ void GLRenderer::drawLabels(Molecule::AtomLabelList &labels)
     float inverseRotation[16];
     getInverseRotation(inverseRotation);
 
-    // Diable lighting to get proper flat shading.
-    glPushAttrib(GL_LIGHTING_BIT);
-    glDisable(GL_LIGHTING);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     Molecule::AtomLabelList::iterator iter;
     for (iter = labels.begin(); iter != labels.end(); ++iter)
     {
@@ -687,9 +615,8 @@ void GLRenderer::drawLabels(Molecule::AtomLabelList &labels)
         foreground[3] = 1.0f;
 
         drawText(text.c_str(), x, y, z, offset, labelsTextScale, inverseRotation, false, 0, foreground);
-//    }
     }
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::DrawAnnotations(std::list<Molecule*> &molecules)
@@ -712,9 +639,8 @@ void GLRenderer::drawAnnotations(Molecule::AnnotationList &Annotations, bool dra
     float inverseRotation[16];
     getInverseRotation(inverseRotation);
 
-    // Diable lighting to get proper flat shading.
-    glPushAttrib(GL_LIGHTING_BIT);
-    glDisable(GL_LIGHTING);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     int annotationNumber = 0;
     Molecule::AnnotationList::iterator iter = Annotations.begin();
     while (iter != Annotations.end())
@@ -739,29 +665,27 @@ void GLRenderer::drawAnnotations(Molecule::AnnotationList &Annotations, bool dra
         float *foreground = getColor(annotation->m_color);
         drawText(text, x, y, z, 0.0f, labelsTextScale, inverseRotation, displayNumber, annotationNumber, foreground);
     }
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::circleStackAtoms(Stack *stack)
 {
-
     if (stack->empty())
     {
         return;
     }
 
-    glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_LINE_BIT);
-    glPushMatrix();
-
+    ModernShader::pushModelView();
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_FOG);
 
     float inverseRotation[16];
     getInverseRotation(inverseRotation);
 
-    glLineWidth(2.0f);
+    glLineWidth(1.0f);
+    const int numSegs = 64;
     Stack::DataContainer::const_iterator iter = stack->getData().begin();
     while (iter != stack->getData().end())
     {
@@ -774,61 +698,49 @@ void GLRenderer::circleStackAtoms(Stack *stack)
             {
                 continue;
             }
-            if (iter == stack->getData().end())
-            {
-                glColor3f(1.0f, 1.0f, 1.0f);
-            }
-            else
-            {
-                glColor3f(0.7f, 0.7f, 1.0f);
-            }
+            float cr = (iter == stack->getData().end()) ? 1.0f : 0.7f;
+            float cg = (iter == stack->getData().end()) ? 1.0f : 0.7f;
+            float cb = 1.0f;
+
             if (item.molecule->Visible())
             {
-
-                glPushMatrix();
-                // Position at coordintes.
-                glTranslatef(atom->x(), atom->y(), atom->z());
-                // Keep oriented toward camera.
-                glMultMatrixf(inverseRotation);
+                ModernShader::pushModelView();
+                ModernShader::translateModelView(atom->x(), atom->y(), atom->z());
+                ModernShader::multModelView(inverseRotation);
 
                 float radius = 1.2f * atom->getRadius() * style.getBallPercent();
-                glBegin(GL_LINE_STRIP);
-                float circleX = 0.0f;
-                float circleY = radius;
-                for (float angle = 0.0f; angle <= (2.0f*M_PI); angle += 0.01f)
+                std::vector<ModernVertex> circleVerts(numSegs + 1);
+                for (int s = 0; s <= numSegs; ++s)
                 {
-                    float x = radius * (float)sin((double)angle);
-                    float y = radius * (float)cos((double)angle);
-                    glVertex2d(circleX, circleY);
-                    circleX = x;
-                    circleY = y;
+                    float angle = (2.0f * static_cast<float>(M_PI) * s) / numSegs;
+                    float x = radius * std::sin(angle);
+                    float y = radius * std::cos(angle);
+                    circleVerts[s] = { x, y, 0.0f, 0.0f, 0.0f, 1.0f, cr, cg, cb, 1.0f, 0.0f, 0.0f };
                 }
-                glEnd();
-                glPopMatrix();
-
+                ModernShader::drawVertices(GL_LINE_STRIP, circleVerts.data(), numSegs + 1);
+                ModernShader::popModelView();
             }
         }
     }
-    glPopMatrix();
-    glPopAttrib();
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(prevLight);
+    ModernShader::popModelView();
     logOpenGLErrors(__FILE__, __LINE__);
 }
 
 void GLRenderer::CircleAtoms(MIAtom **atoms, int natoms)
 {
-
-    glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_COLOR_BUFFER_BIT | GL_LINE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glDisable(GL_DEPTH_TEST);
     glDisable(GL_BLEND);
-    glDisable(GL_LIGHTING);
-    glDisable(GL_FOG);
 
     float inverseRotation[16];
     getInverseRotation(inverseRotation);
 
-    glLineWidth(2.0f);
+    glLineWidth(1.0f);
     logOpenGLErrors(__FILE__, __LINE__);
-    glColor3f(1.0f, 0.0f, 0.0f);
+    const int numSegs = 64;
     for (int index = 0; index < natoms; index++)
     {
         MIAtom *atom = atoms[index];
@@ -839,33 +751,26 @@ void GLRenderer::CircleAtoms(MIAtom **atoms, int natoms)
 
         if (atom != NULL)
         {
-
-            glPushMatrix();
-            // Position at coordintes.
-            glTranslatef(atom->x(), atom->y(), atom->z());
-            // Keep oriented toward camera.
-            glMultMatrixf(inverseRotation);
+            ModernShader::pushModelView();
+            ModernShader::translateModelView(atom->x(), atom->y(), atom->z());
+            ModernShader::multModelView(inverseRotation);
 
             float radius = 1.2f * atom->getRadius() * style.getBallPercent();
-            glBegin(GL_LINE_STRIP);
-            float circleX = 0.0f;
-            float circleY = radius;
-            for (float angle = 0.0f; angle <= (2.0f*M_PI); angle += 0.01f)
+            std::vector<ModernVertex> circleVerts(numSegs + 1);
+            for (int s = 0; s <= numSegs; ++s)
             {
-                float x = radius * (float)sin((double)angle);
-                float y = radius * (float)cos((double)angle);
-                glVertex2d(circleX, circleY);
-                circleX = x;
-                circleY = y;
+                float angle = (2.0f * static_cast<float>(M_PI) * s) / numSegs;
+                float x = radius * std::sin(angle);
+                float y = radius * std::cos(angle);
+                circleVerts[s] = { x, y, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f };
             }
-            glEnd();
-            glPopMatrix();
-
+            ModernShader::drawVertices(GL_LINE_STRIP, circleVerts.data(), numSegs + 1);
+            ModernShader::popModelView();
         }
     }
-    glPopAttrib();
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(prevLight);
     logOpenGLErrors(__FILE__, __LINE__);
-
 }
 
 void GLRenderer::DrawContacts(std::vector<CONTACT> &Contacts)
@@ -879,14 +784,12 @@ void GLRenderer::DrawContacts(std::vector<CONTACT> &Contacts)
     getInverseRotation(inverseRotation);
     char text[20];
 
-    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT | GL_COLOR_BUFFER_BIT | GL_LINE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    glDisable(GL_LIGHTING);
 
-    glLineWidth(2.0f);
+    glLineWidth(1.0f);
     for (unsigned int i = 0; i < Contacts.size(); i++)
     {
         MIAtom &a1 = *Contacts[i].line.getAtom1();
@@ -894,18 +797,19 @@ void GLRenderer::DrawContacts(std::vector<CONTACT> &Contacts)
         if (Contacts[i].color > 0)
         {
             sprintf(text, "%0.2f", Contacts[i].d);
-            glColor4fv(getColor(Contacts[i].color));
-            glBegin(GL_LINES);
-            glVertex3f(a1.x(), a1.y(), a1.z());
-            glVertex3f(a2.x(), a2.y(), a2.z());
-            glEnd();
+            float *c = getColor(Contacts[i].color);
+            ModernVertex line[2] = {
+                { a1.x(), a1.y(), a1.z(), 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 },
+                { a2.x(), a2.y(), a2.z(), 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 }
+            };
+            ModernShader::drawVertices(GL_LINES, line, 2);
             float x = (a1.x() + a2.x()) * 0.5f;
             float y = (a1.y() + a2.y()) * 0.5f;
             float z = (a1.z() + a2.z()) * 0.5f;
             drawText(text, x, y, z, 0.0f, labelsTextScale, inverseRotation, false, 0, white);
         }
     }
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::DrawVus(std::vector<PLINE> &Vus, int w)
@@ -918,43 +822,36 @@ void GLRenderer::drawLines(std::vector<PLINE> &Vus, int w, bool withDepthTest)
     if (Vus.size() <= 0)
         return;
 
-    glPushAttrib(GL_ENABLE_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT | GL_COLOR_BUFFER_BIT | GL_LINE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glEnable(GL_LINE_SMOOTH);
-    glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
     if (!withDepthTest)
     {
         glDisable(GL_DEPTH_TEST);
     }
-    glDisable(GL_LIGHTING);
 
-    glLineWidth(w);
-    QVector<QVector3D> vertices;
-    QVector<QVector4D> colors;
-    vertices.reserve(Vus.size()*2);
-    colors.reserve(Vus.size()*2);
+    Q_UNUSED(w);
+    glLineWidth(1.0f);
+    std::vector<ModernVertex> verts;
+    verts.reserve(Vus.size() * 2);
 
     for (unsigned int i = 0; i < Vus.size(); i++)
     {
         APOINT &a1 = Vus[i].p1;
         APOINT &a2 = Vus[i].p2;
-        vertices.append(QVector3D(a1.x, a1.y, a1.z));
         QVector4D color(getColorVector(a1.color, false));
-        colors.append(color);
-        vertices.append(QVector3D(a2.x, a2.y, a2.z));
-        colors.append(color);
+        verts.push_back({ a1.x, a1.y, a1.z, 0.0f, 0.0f, 1.0f, color.x(), color.y(), color.z(), color.w(), 0.0f, 0.0f });
+        verts.push_back({ a2.x, a2.y, a2.z, 0.0f, 0.0f, 1.0f, color.x(), color.y(), color.z(), color.w(), 0.0f, 0.0f });
     }
 
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glEnableClientState(GL_COLOR_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, vertices.constData());
-    glColorPointer(4, GL_FLOAT, 0, colors.constData());
-    glDrawArrays(GL_LINES, 0, vertices.size());
-    glDisableClientState(GL_VERTEX_ARRAY);
-    glDisableClientState(GL_COLOR_ARRAY);
+    ModernShader::drawVertices(GL_LINES, verts.data(), static_cast<int>(verts.size()));
 
-    glPopAttrib();
+    if (!withDepthTest)
+    {
+        glEnable(GL_DEPTH_TEST);
+    }
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 float*GLRenderer::getColor(int colorIndex, bool adjustForCurrentModel)
@@ -1003,8 +900,9 @@ float*GLRenderer::getColor(PaletteColor c, bool adjustForCurrentModel)
 
 void GLRenderer::drawAngles(std::vector<ANGLE> &angles)
 {
-    glPushAttrib(GL_LINE_BIT);
-    glLineWidth(4.0f);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
+    glLineWidth(1.0f);
     for (unsigned int i = 0; i < angles.size(); i++)
     {
         ANGLE &angle = angles[i];
@@ -1015,12 +913,13 @@ void GLRenderer::drawAngles(std::vector<ANGLE> &angles)
             continue;
         }
         PushedName pushedName(getPickName(angle), pickingEnabled);
-        glBegin(GL_LINES);
-        glVertex3f(a1->x(), a1->y(), a1->z());
-        glVertex3f(a2->x(), a2->y(), a2->z());
-        glEnd();
+        ModernVertex line[2] = {
+            { a1->x(), a1->y(), a1->z(), 0, 0, 1, currentColor[0], currentColor[1], currentColor[2], currentColor[3], 0, 0 },
+            { a2->x(), a2->y(), a2->z(), 0, 0, 1, currentColor[0], currentColor[1], currentColor[2], currentColor[3], 0, 0 }
+        };
+        ModernShader::drawVertices(GL_LINES, line, 2);
     }
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::drawBonds(std::vector<Bond> &bonds, int *color)
@@ -1083,7 +982,8 @@ void GLRenderer::drawBonds(std::vector<Bond> &bonds, int *color)
                         {
                             PushedName pushedName(getPickName(bond), pickingEnabled);
                             int c1 = ::getColor(a1);
-                            glColor4fv(getColor(c1));
+                            float *col = getColor(c1);
+                            memcpy(currentColor, col, 4 * sizeof(float));
                             float p1[3];
                             p1[0] = a1->x();
                             p1[1] = a1->y();
@@ -1182,29 +1082,17 @@ void GLRenderer::drawBonds(std::vector<Bond> &bonds, int *color)
     }
     if (!pickingEnabled)
     {
-        glPushAttrib(GL_ENABLE_BIT | GL_LINE_BIT | GL_LIGHTING_BIT);
-        if (antialiasLines)
-        {
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glEnable(GL_LINE_SMOOTH);
-            glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-        }
-        else
-        {
-            //    glDisable(GL_BLEND);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDisable(GL_LINE_SMOOTH);
-        }
-        glDisable(GL_LIGHTING);
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         foreach (float lineWidth, bondRenders.keys())
         {
-            glLineWidth(lineWidth);
+            glLineWidth(1.0f);
             bondRenders[lineWidth].draw();
         }
-        glPopAttrib();
+        ModernShader::setLightingEnabled(prevLight);
     }
 }
 
@@ -1220,7 +1108,7 @@ void GLRenderer::drawBondCylinder(const Vector3<float> &pos1, int color1, const 
     float p[3];
     {
         PushedName pushedName(1, pickingEnabled);
-        glColor4fv(getColor(color1));
+        memcpy(currentColor, getColor(color1), 4 * sizeof(float));
         DrawCylinder(pos1, midPoint, radius);
         if (capped)
         {
@@ -1233,7 +1121,7 @@ void GLRenderer::drawBondCylinder(const Vector3<float> &pos1, int color1, const 
 
     {
         PushedName pushedName(2, pickingEnabled);
-        glColor4fv(getColor(color2));
+        memcpy(currentColor, getColor(color2), 4 * sizeof(float));
         DrawCylinder(midPoint, pos2, radius);
         if (capped)
         {
@@ -1251,31 +1139,20 @@ void GLRenderer::drawBondLine(const Vector3<float> &pos1, int color1, const Vect
     {
         return;
     }
-    glPushAttrib(GL_ENABLE_BIT | GL_LINE_BIT | GL_LIGHTING_BIT);
-    if (antialiasLines)
-    {
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glEnable(GL_LINE_SMOOTH);
-        glHint(GL_LINE_SMOOTH_HINT, GL_NICEST);
-    }
-    else
-    {
-        //    glDisable(GL_BLEND);
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glDisable(GL_LINE_SMOOTH);
-    }
-    glDisable(GL_LIGHTING);
-    glLineWidth(lineWidth);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glLineWidth(1.0f);
 
     if (joinBondsOfSameColor && color1 == color2)
     {
-        glBegin(GL_LINES);
-        glColor4fv(getColor(color1, true));
-        glVertex3f(pos1.x, pos1.y, pos1.z);
-        glVertex3f(pos2.x, pos2.y, pos2.z);
-        glEnd();
+        float *c = getColor(color1, true);
+        ModernVertex line[2] = {
+            { pos1.x, pos1.y, pos1.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 },
+            { pos2.x, pos2.y, pos2.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 }
+        };
+        ModernShader::drawVertices(GL_LINES, line, 2);
     }
     else
     {
@@ -1283,22 +1160,24 @@ void GLRenderer::drawBondLine(const Vector3<float> &pos1, int color1, const Vect
         midPoint.scale(0.5f);
         {
             PushedName pushedName(1, pickingEnabled);
-            glBegin(GL_LINES);
-            glColor4fv(getColor(color1, true));
-            glVertex3f(pos1.x, pos1.y, pos1.z);
-            glVertex3f(midPoint.x, midPoint.y, midPoint.z);
-            glEnd();
+            float *c = getColor(color1, true);
+            ModernVertex line[2] = {
+                { pos1.x, pos1.y, pos1.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 },
+                { midPoint.x, midPoint.y, midPoint.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 }
+            };
+            ModernShader::drawVertices(GL_LINES, line, 2);
         }
         {
             PushedName pushedName(2, pickingEnabled);
-            glBegin(GL_LINES);
-            glColor4fv(getColor(color2, true));
-            glVertex3f(midPoint.x, midPoint.y, midPoint.z);
-            glVertex3f(pos2.x, pos2.y, pos2.z);
-            glEnd();
+            float *c = getColor(color2, true);
+            ModernVertex line[2] = {
+                { midPoint.x, midPoint.y, midPoint.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 },
+                { pos2.x, pos2.y, pos2.z, 0, 0, 1, c[0], c[1], c[2], c[3], 0, 0 }
+            };
+            ModernShader::drawVertices(GL_LINES, line, 2);
         }
     }
-    glPopAttrib();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::drawResidueAtoms(ResidueListIterator res, ResidueListIterator resEnd)
@@ -1323,7 +1202,7 @@ void GLRenderer::drawResidueAtoms(ResidueListIterator res, ResidueListIterator r
                 {
                     PushedName pushedName(getPickName(a1), pickingEnabled);
                     int c1 = ::getColor(a1);
-                    glColor4fv(getColor(c1));
+                    memcpy(currentColor, getColor(c1), 4 * sizeof(float));
                     float p1[3];
                     p1[0] = a1->x();
                     p1[1] = a1->y();
@@ -1420,98 +1299,12 @@ GLuint GLRenderer::getPickName(ANGLE &angle)
 
 void GLRenderer::DrawCylinder(const Vector3<float> &start, const Vector3<float> &end, float radius)
 {
-#define   c45  0.70711f
-
-    float vp[16][6];
-    float mat[3][3];
-    float a[3];
-    float b[3];
-    float c[3];
-    float d[3];
-    int i, j;
-    static float cdata[8][3] =  {{0.0f, 1.0f, 0.0f},
-                                 {c45, c45, 0.0f},
-                                 {1.0f, 0.0f, 0.0f},
-                                 {c45, -c45, 0.0f},
-                                 {0.0f, -1.0f, 0.0f},
-                                 {-c45, -c45, 0.0f},
-                                 {-1.0f, 0.0f, 0.0f},
-                                 {-c45, c45, 0.0f}};
-
-    //Construct a transformation matrix to map the cylinder to the endpoints given
-    for (i = 0; i < 3; i++)
-    {
-        a[i] = end[i] - start[i];
-        b[i] = 0.0;
-    }
-    normalize(a); //Axis direction
-
-    if (fabs(a[0]) < 0.9)
-    {
-        b[0] = 1.0;
-    }
-    else
-    {
-        b[1] = 1.0; // random unit vector
-    }
-
-    cross(a, b, c);  // perpendicular to a
-    normalize(c);
-    cross(a, c, b);  // perpendicular to a, c
-    normalize(b);
-    for (i = 0; i < 3; i++)
-    {
-        mat[0][i] = c[i];
-        mat[1][i] = b[i];
-        mat[2][i] = a[i];
-    }
-
-    //Construct the transformed coordinates for the cyclinder
-    for (i = 0; i < 8; i++)
-    {
-        vecmat(cdata[i], mat, d);
-        for (j = 0; j < 3; j++)
-        {
-            vp[i][j] = d[j]*radius + start[j];
-            vp[i][j+3] = d[j];
-            vp[i+8][j] = d[j]*radius + end[j];
-            vp[i+8][j+3] = d[j];
-        }
-    }
-
-    //Construct the quadrilaterals
-    glBegin(GL_QUADS);
-    for (i = 0; i < 8; i++)
-    {
-        j = i+1;
-        if (j >= 8)
-        {
-            j = 0;
-        }
-        if (useClockwiseFrontFaces)
-        {
-            glNormal3fv(&vp[j][3]);
-            glVertex3fv(&vp[j][0]);
-            glNormal3fv(&vp[j+8][3]);
-            glVertex3fv(&vp[j+8][0]);
-            glNormal3fv(&vp[i+8][3]);
-            glVertex3fv(&vp[i+8][0]);
-            glNormal3fv(&vp[i][3]);
-            glVertex3fv(&vp[i][0]);
-        }
-        else
-        {
-            glNormal3fv(&vp[i][3]);
-            glVertex3fv(&vp[i][0]);
-            glNormal3fv(&vp[i+8][3]);
-            glVertex3fv(&vp[i+8][0]);
-            glNormal3fv(&vp[j+8][3]);
-            glVertex3fv(&vp[j+8][0]);
-            glNormal3fv(&vp[j][3]);
-            glVertex3fv(&vp[j][0]);
-        }
-    }
-    glEnd();
+    ModernShader::drawCylinder(
+        QVector3D(start.x, start.y, start.z),
+        QVector3D(end.x, end.y, end.z),
+        radius,
+        QVector4D(currentColor[0], currentColor[1], currentColor[2], currentColor[3])
+    );
 }
 
 void GLRenderer::normalize(float a[3])
@@ -1570,47 +1363,22 @@ void GLRenderer::setIdentity(float rotation[])
 
 void GLRenderer::DrawSphere(float c[3], float radius, int tess)
 {
-
-    if (!quad[getContext()])
-        quad[getContext()] = gluNewQuadric();
-
-    glPushMatrix();
-    glTranslated(c[0], c[1], c[2]);
-    glScaled(radius, radius, radius);
-    //  static float center[] = { 0.0, 0.0, 0.0 };
-    //  DrawSphere2(0, center, 1.0, tess);
-    gluQuadricNormals(quad[getContext()], GLU_SMOOTH);
-    gluSphere(quad[getContext()], 1.0, tess, tess);
-
-    glPopMatrix();
+    ModernShader::drawUnitSphere(
+        QVector3D(c[0], c[1], c[2]),
+        radius,
+        QVector4D(currentColor[0], currentColor[1], currentColor[2], currentColor[3]),
+        tess, tess
+    );
 }
 
 void GLRenderer::DrawSphere2(float c[3], float radius, int tess)
 {
-    //Translate and draw
-    if (abs(tess) <= 4)
-    {
-        //if (!m_quad)
-        //m_quad = gluNewQuadric ();
-        //gluSphere (m_quad, radius, tess, tess);
-        //    RenderCube (c, radius*0.8, tess); //Full cubes look too big
-    }
-    else if (tess < 0)
-    {
-        //    RenderTetra (c, radius, tess);
-    }
-    else
-    {
-        glPushMatrix();
-        glTranslated(c[0], c[1], c[2]);
-        float dradius[3];
-        for (int i = 0; i < 3; i++)
-        {
-            dradius[i] = radius;
-        }
-        RenderSphereoid(c, dradius, tess);
-        glPopMatrix();
-    }
+    ModernShader::drawUnitSphere(
+        QVector3D(c[0], c[1], c[2]),
+        radius,
+        QVector4D(1.0f, 1.0f, 1.0f, 1.0f),
+        std::abs(tess), std::abs(tess)
+    );
 }
 
 #define sphereoidX 0.525731112119133606f
@@ -1754,46 +1522,12 @@ void GLRenderer::Subdivide(int level, bool bWireFrame, float fnorm, float radius
 void GLRenderer::TriangleRender(bool bWireFrame, float n1[3], float n2[3], float n3[3],
                                 float v1[3], float v2[3], float v3[3])
 {
-    if (bWireFrame)
-    {
-        glBegin(GL_LINE_LOOP);
-        glVertex3fv(v1);
-        glVertex3fv(v2);
-        glVertex3fv(v3);
-        glEnd();
-    }
-    else
-    {
-        glBegin(GL_TRIANGLES);
-        glNormal3fv(n1);
-        glVertex3fv(v1);
-        glNormal3fv(n2);
-        glVertex3fv(v2);
-        glNormal3fv(n3);
-        glVertex3fv(v3);
-        glEnd();
-    }
-
-    /* Display normals
-       float vn1[3], vn2[3], vn3[3];
-       for (int i=0; i<3; i++)
-       {
-       vn1[i] = v1[i] + n1[i];
-       vn2[i] = v2[i] + n2[i];
-       vn3[i] = v3[i] + n3[i];
-       }
-       unsigned char bWhite[4] = {255,255,255, 0};
-       SetColorMode (SSI_LINES);
-       SetColor (bWhite);
-       glBegin (GL_LINES);
-       glVertex3fv (v1);
-       glVertex3fv (vn1);
-       glVertex3fv (v2);
-       glVertex3fv (vn2);
-       glVertex3fv (v3);
-       glVertex3fv (vn3);
-       glEnd();
-     */
+    ModernVertex tri[3] = {
+        { v1[0], v1[1], v1[2], n1[0], n1[1], n1[2], 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+        { v2[0], v2[1], v2[2], n2[0], n2[1], n2[2], 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f },
+        { v3[0], v3[1], v3[2], n3[0], n3[1], n3[2], 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f }
+    };
+    ModernShader::drawVertices(bWireFrame ? GL_LINE_LOOP : GL_TRIANGLES, tri, 3);
 }
 
 bool GLRenderer::isFogEnabled()
@@ -1973,21 +1707,22 @@ void GLRenderer::drawSurface(std::vector<SURFDOT> &dots)
     {
         return;
     }
-    glPushAttrib(GL_CURRENT_BIT | GL_LIGHTING_BIT);
-    glDisable(GL_LIGHTING);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glPointSize(2.0f);
-    glBegin(GL_POINTS);
+    std::vector<ModernVertex> verts;
+    verts.reserve(dots.size());
     for (unsigned int i = 0; i < dots.size(); i++)
     {
         SURFDOT &dot = dots[i];
         if (dot.color > 0)
         {
-            glColor4fv(getColor(dot.color));
-            glVertex3f(dot.x, dot.y, dot.z);
+            float *c = getColor(dot.color);
+            verts.push_back({ dot.x, dot.y, dot.z, 0.0f, 0.0f, 1.0f, c[0], c[1], c[2], c[3], 0.0f, 0.0f });
         }
     }
-    glEnd();
-    glPopAttrib();
+    ModernShader::drawVertices(GL_POINTS, verts.data(), static_cast<int>(verts.size()));
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void GLRenderer::setJoinBondsOfSameColor(bool on)

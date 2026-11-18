@@ -8,6 +8,7 @@
 #include <QtGui/QPixmap>
 #include <QOpenGLContext>
 #include <QOpenGLFramebufferObject>
+#include <opengl/ModernShader.h>
 
 namespace
 {
@@ -70,7 +71,7 @@ void TextPrivate::allocateTexture()
     QImage image(TEXTURE_SIZE, TEXTURE_SIZE, QImage::Format_ARGB32);
     image.fill(Qt::transparent);
     image = image.convertToFormat(QImage::Format_RGBA8888);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_ALPHA, TEXTURE_SIZE, TEXTURE_SIZE,
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, TEXTURE_SIZE, TEXTURE_SIZE,
                  0, GL_RGBA, GL_UNSIGNED_BYTE, image.bits());
 
     textures += texture;
@@ -153,50 +154,46 @@ QFontMetrics Text::fontMetrics() const
 //! Renders text at given x, y.
 void Text::renderText(float x, float y, const QString &text)
 {
-    // If the current context's device is not active for painting, the
-    // texture generation does not work. This may be specific to the way
-    // MIFit is setup.
+    float white[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    renderText(x, y, text, white);
+}
+
+void Text::renderText(float x, float y, const QString &text, const float color[4])
+{
     if (!QOpenGLContext::currentContext())
         return;
 
-    glPushAttrib(GL_CURRENT_BIT | GL_ENABLE_BIT | GL_TEXTURE_BIT);
-    glPushMatrix();
-    glEnable(GL_TEXTURE_2D);
+    ModernShader::pushModelView();
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-
-    GLuint texture = 0;
-    glTranslatef(x, y, 0);
+    ModernShader::translateModelView(x, y, 0.0f);
     for (int i = 0; i < text.length(); ++i)
     {
         CharData &c = d->createCharacter(text[i]);
-        if (texture != c.textureId)
-        {
-            texture = c.textureId;
-            glBindTexture(GL_TEXTURE_2D, texture);
-        }
 
+        ModernVertex quad[6];
+        auto setV = [&](int idx, float px, float py, float u, float v) {
+            quad[idx].px = px; quad[idx].py = py; quad[idx].pz = 0.0f;
+            quad[idx].nx = 0.0f; quad[idx].ny = 0.0f; quad[idx].nz = 1.0f;
+            quad[idx].r = color[0]; quad[idx].g = color[1]; quad[idx].b = color[2]; quad[idx].a = color[3];
+            quad[idx].u = u; quad[idx].v = v;
+        };
 
-        glBegin(GL_QUADS);
-        glTexCoord2f(c.s[0], c.t[1]);
-        glVertex2f(0, 0);
+        setV(0, 0.0f, 0.0f, c.s[0], c.t[1]);
+        setV(1, c.width, 0.0f, c.s[1], c.t[1]);
+        setV(2, c.width, c.height, c.s[1], c.t[0]);
 
-        glTexCoord2f(c.s[1], c.t[1]);
-        glVertex2f(c.width, 0);
+        setV(3, 0.0f, 0.0f, c.s[0], c.t[1]);
+        setV(4, c.width, c.height, c.s[1], c.t[0]);
+        setV(5, 0.0f, c.height, c.s[0], c.t[0]);
 
-        glTexCoord2f(c.s[1], c.t[0]);
-        glVertex2f(c.width, c.height);
+        ModernShader::drawVertices(GL_TRIANGLES, quad, 6, true, c.textureId);
 
-        glTexCoord2f(c.s[0], c.t[0]);
-        glVertex2f(0, c.height);
-        glEnd();
-
-        glTranslatef(c.width, 0, 0);
+        ModernShader::translateModelView(c.width, 0.0f, 0.0f);
     }
 
-    glPopMatrix();
-    glPopAttrib();
+    ModernShader::popModelView();
 }
 
 } // namespace opengl

@@ -1,7 +1,9 @@
 #include "Arc.h"
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 #include <cmath>
+#include <vector>
 
 using namespace mi::math;
 using namespace std;
@@ -85,9 +87,18 @@ void Arc::render()
     {
         return;
     }
-    glEnableClientState(GL_VERTEX_ARRAY);
-    glVertexPointer(3, GL_FLOAT, 0, vertexBuffer);
-    glDrawArrays(GL_LINE_STRIP, 0, bufferSize / 3);
+    int count = bufferSize / 3;
+    std::vector<ModernVertex> verts(count);
+    for (int i = 0; i < count; ++i)
+    {
+        verts[i].px = vertexBuffer[i * 3 + 0];
+        verts[i].py = vertexBuffer[i * 3 + 1];
+        verts[i].pz = vertexBuffer[i * 3 + 2];
+        verts[i].nx = 0.0f; verts[i].ny = 0.0f; verts[i].nz = 1.0f;
+        verts[i].r = 1.0f; verts[i].g = 0.0f; verts[i].b = 0.0f; verts[i].a = 1.0f;
+        verts[i].u = 0.0f; verts[i].v = 0.0f;
+    }
+    ModernShader::drawVertices(GL_LINE_STRIP, verts.data(), count);
 }
 
 void Arc::clearVertices()

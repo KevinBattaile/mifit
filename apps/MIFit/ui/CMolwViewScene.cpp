@@ -4,16 +4,7 @@
 #include <opengl/Axes.h>
 #include <opengl/Camera.h>
 #include <opengl/Frustum.h>
-#include <opengl/OpenGL.h>
-#include <opengl/QuatUtil.h>
-#include <opengl/Sphere.h>
-#include <opengl/Viewport.h>
-#include <opengl/ViewportRelativeViewpoint.h>
-#include <opengl/interact/TargetFeedback.h>
-#include <math/Vector4.h>
-#include <opengl/Axes.h>
-#include <opengl/Camera.h>
-#include <opengl/Frustum.h>
+#include <opengl/ModernShader.h>
 #include <opengl/OpenGL.h>
 #include <opengl/QuatUtil.h>
 #include <opengl/Sphere.h>
@@ -39,7 +30,7 @@ static void logOpenGLErrors(const char *file, int line)
     int error = glGetError();
     if (error != 0)
     {
-        Logger::log("OpenGL error %s (%d) at line %d in %s", gluErrorString(error), error, line, file);
+        Logger::log("OpenGL error %d at line %d in %s", error, line, file);
     }
 }
 
@@ -88,18 +79,7 @@ void CMolwViewScene::initializeForRender()
     }
 
     glEnable(GL_DEPTH_TEST);
-    glEnable(GL_LIGHTING);
-    glDisable(GL_LIGHT0);
-    glDisable(GL_LIGHT1);
-    glDisable(GL_LIGHT2);
-    glDisable(GL_LIGHT3);
-    glDisable(GL_LIGHT4);
-    glDisable(GL_LIGHT5);
-    glDisable(GL_LIGHT6);
-    glDisable(GL_LIGHT7);
-    glShadeModel(GL_SMOOTH);
-    glEnable(GL_COLOR_MATERIAL);
-    glColorMaterial(GL_FRONT, GL_AMBIENT_AND_DIFFUSE);
+    ModernShader::setLightingEnabled(true);
     renderer->initializeForRender();
 }
 
@@ -154,8 +134,7 @@ void CMolwViewScene::render()
 
     logOpenGLErrors(__FILE__, __LINE__);
 
-    glDisable(GL_CLIP_PLANE0);
-    glDisable(GL_CLIP_PLANE1);
+    ModernShader::disableClipPlanes();
 
     if (topView)
     {
@@ -169,25 +148,27 @@ void CMolwViewScene::render()
             QuatUtil::rotateVector(cameraOrientation, corner);
             corner.add(cameraEye);
         }
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glLineWidth(2.0f);
-        glBegin(GL_LINES);
-        glVertex3f(corners[2].x, corners[2].y, corners[2].z);
-        glVertex3f(corners[3].x, corners[3].y, corners[3].z);
-        glVertex3f(corners[6].x, corners[6].y, corners[6].z);
-        glVertex3f(corners[7].x, corners[7].y, corners[7].z);
-        glEnd();
+        glLineWidth(1.0f);
+        std::vector<ModernVertex> clipVerts(4);
+        auto setV = [](ModernVertex &v, const Vector3<float> &p) {
+            v = { p.x, p.y, p.z, 0.0f, 0.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f };
+        };
+        setV(clipVerts[0], corners[2]);
+        setV(clipVerts[1], corners[3]);
+        setV(clipVerts[2], corners[6]);
+        setV(clipVerts[3], corners[7]);
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
+        ModernShader::drawVertices(GL_LINES, clipVerts.data(), clipVerts.size());
+        ModernShader::setLightingEnabled(prevLight);
 
-        double *plane = new double[4];
+        double plane[4];
         // Back plane
         planeFrom3Points(corners[7], corners[4], corners[5], plane);
-        glClipPlane(GL_CLIP_PLANE0, plane);
-        glEnable(GL_CLIP_PLANE0);
+        ModernShader::setClipPlane(0, true, QVector4D(plane[0], plane[1], plane[2], plane[3]));
         // Front plane
         planeFrom3Points(corners[1], corners[0], corners[2], plane);
-        glClipPlane(GL_CLIP_PLANE1, plane);
-        glEnable(GL_CLIP_PLANE1);
-        delete plane;
+        ModernShader::setClipPlane(1, true, QVector4D(plane[0], plane[1], plane[2], plane[3]));
     }
     logOpenGLErrors(__FILE__, __LINE__);
 
@@ -218,7 +199,7 @@ void CMolwViewScene::render()
 
     logOpenGLErrors(__FILE__, __LINE__);
 
-    glPushMatrix();
+    ModernShader::pushModelView();
 
     renderer->Draw2(models, true, true, showSymmetryAsBackbone);
     if (pentamerModel != NULL)
@@ -245,7 +226,7 @@ void CMolwViewScene::render()
     MIDrawSurfaces();
     renderer->DrawAnnotations(models->getMolecules());
 
-    glPopMatrix();
+    ModernShader::popModelView();
     logOpenGLErrors(__FILE__, __LINE__);
 
     Vector3<float> target(camera->getTarget(frustum->getFocalLength()));
@@ -255,12 +236,10 @@ void CMolwViewScene::render()
 
     if (showUnitCell)
     {
-        glPushAttrib(GL_CURRENT_BIT | GL_LIGHTING_BIT | GL_ENABLE_BIT);
-        glDisable(GL_LIGHTING);
-        glDisable(GL_CLIP_PLANE0);
-        glDisable(GL_CLIP_PLANE1);
-        glColor3f(1.0f, 1.0f, 1.0f);
-        glPushMatrix();
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
+        ModernShader::disableClipPlanes();
+        ModernShader::pushModelView();
 
         Molecule *molecule = models->GetCurrentModel();
         if (molecule != NULL)
@@ -282,50 +261,41 @@ void CMolwViewScene::render()
                 float *point = points[i];
                 mapHeader.FtoC(&point[0], &point[1], &point[2]);
             }
-            glBegin(GL_LINES);
-            glVertex3f(points[0][0], points[0][1], points[0][2]);
-            glVertex3f(points[1][0], points[1][1], points[1][2]);
-            glVertex3f(points[0][0], points[0][1], points[0][2]);
-            glVertex3f(points[2][0], points[2][1], points[2][2]);
-            glVertex3f(points[0][0], points[0][1], points[0][2]);
-            glVertex3f(points[3][0], points[3][1], points[3][2]);
-
-            glVertex3f(points[4][0], points[4][1], points[4][2]);
-            glVertex3f(points[1][0], points[1][1], points[1][2]);
-            glVertex3f(points[5][0], points[5][1], points[5][2]);
-            glVertex3f(points[1][0], points[1][1], points[1][2]);
-
-            glVertex3f(points[4][0], points[4][1], points[4][2]);
-            glVertex3f(points[2][0], points[2][1], points[2][2]);
-            glVertex3f(points[6][0], points[6][1], points[6][2]);
-            glVertex3f(points[2][0], points[2][1], points[2][2]);
-
-            glVertex3f(points[5][0], points[5][1], points[5][2]);
-            glVertex3f(points[3][0], points[3][1], points[3][2]);
-            glVertex3f(points[6][0], points[6][1], points[6][2]);
-            glVertex3f(points[3][0], points[3][1], points[3][2]);
-
-            glVertex3f(points[7][0], points[7][1], points[7][2]);
-            glVertex3f(points[4][0], points[4][1], points[4][2]);
-            glVertex3f(points[7][0], points[7][1], points[7][2]);
-            glVertex3f(points[5][0], points[5][1], points[5][2]);
-            glVertex3f(points[7][0], points[7][1], points[7][2]);
-            glVertex3f(points[6][0], points[6][1], points[6][2]);
-            glEnd();
+            const int edgePairs[12][2] = {
+                {0, 1}, {0, 2}, {0, 3},
+                {4, 1}, {5, 1},
+                {4, 2}, {6, 2},
+                {5, 3}, {6, 3},
+                {7, 4}, {7, 5}, {7, 6}
+            };
+            std::vector<ModernVertex> cellVerts(24);
+            for (int e = 0; e < 12; ++e)
+            {
+                for (int k = 0; k < 2; ++k)
+                {
+                    int idx = edgePairs[e][k];
+                    cellVerts[e * 2 + k] = {
+                        points[idx][0], points[idx][1], points[idx][2],
+                        0.0f, 0.0f, 1.0f,
+                        1.0f, 1.0f, 1.0f, 1.0f,
+                        0.0f, 0.0f
+                    };
+                }
+            }
+            ModernShader::drawVertices(GL_LINES, cellVerts.data(), cellVerts.size());
             renderer->drawText("O", points[0][0], points[0][1], points[0][2]);
         }
 
-        glPopMatrix();
-        glPopAttrib();
+        ModernShader::popModelView();
+        ModernShader::setLightingEnabled(prevLight);
     }
 
     if (ShowGnomon && axes[renderer->getContext()] != NULL)
     {
-        glPushAttrib(GL_LIGHTING_BIT | GL_ENABLE_BIT);
-        glDisable(GL_LIGHTING);
-        glDisable(GL_CLIP_PLANE0);
-        glDisable(GL_CLIP_PLANE1);
-        glPushMatrix();
+        bool prevLight = ModernShader::isLightingEnabled();
+        ModernShader::setLightingEnabled(false);
+        ModernShader::disableClipPlanes();
+        ModernShader::pushModelView();
         float margin = 40.0f;
         float axesX = margin - viewport->getWidth() / 2.0f;
         float axesY = viewport->getHeight() / 2.0f - margin;
@@ -334,8 +304,8 @@ void CMolwViewScene::render()
         axesViewpoint.render();
         axes[renderer->getContext()]->setGlUnitsPerPixel(glUnitsPerPixel);
         axes[renderer->getContext()]->render();
-        glPopMatrix();
-        glPopAttrib();
+        ModernShader::popModelView();
+        ModernShader::setLightingEnabled(prevLight);
     }
 
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -346,8 +316,7 @@ void CMolwViewScene::render()
     renderer->circleStackAtoms(atomStack);
     renderer->drawLines(torsionArrow, 4, false);
 
-    glDisable(GL_CLIP_PLANE0);
-    glDisable(GL_CLIP_PLANE1);
+    ModernShader::disableClipPlanes();
 }
 
 void CMolwViewScene::renderOverlay()

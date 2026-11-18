@@ -1,6 +1,7 @@
 #include <opengl/interact/TranslationFeedback.h>
 
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 using namespace mi::opengl;
@@ -24,46 +25,42 @@ void TranslationFeedback::setLength(float length)
 
 void TranslationFeedback::render()
 {
-
-    glPushAttrib(GL_DEPTH_BUFFER_BIT | GL_CURRENT_BIT | GL_LIGHTING_BIT | GL_LINE_BIT);
+    bool prevLight = ModernShader::isLightingEnabled();
+    ModernShader::setLightingEnabled(false);
     glEnable(GL_DEPTH_TEST);
-    glDisable(GL_LIGHTING);
     glLineWidth(1.0f);
 
-    glColor3f(color.getX(), color.getY(), color.getZ());
+    float r = color.getX(), g = color.getY(), b = color.getZ();
+    ModernVertex seg[2] = {
+        { beginPosition.getX(), beginPosition.getY(), beginPosition.getZ(), 0.0f, 0.0f, 1.0f, r, g, b, 1.0f, 0.0f, 0.0f },
+        { endPosition.getX(),   endPosition.getY(),   endPosition.getZ(),   0.0f, 0.0f, 1.0f, r, g, b, 1.0f, 0.0f, 0.0f }
+    };
+    ModernShader::drawVertices(GL_LINES, seg, 2);
 
-    glBegin(GL_LINES);
-    glVertex3f(beginPosition.getX(), beginPosition.getY(), beginPosition.getZ());
-    glVertex3f(endPosition.getX(), endPosition.getY(), endPosition.getZ());
-    glEnd();
+    ModernShader::pushModelView();
+    ModernShader::translateModelView(beginPosition.getX(), beginPosition.getY(), beginPosition.getZ());
 
-    glPushMatrix();
-    glTranslatef(beginPosition.getX(), beginPosition.getY(), beginPosition.getZ());
+    float margin = length / 3.0f;
+    ModernVertex verts[12] = {
+        { -length, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { -margin, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        {  margin, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        {  length, 0.0f, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
 
-    glBegin(GL_LINES);
+        { 0.0f, -length, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, -margin, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f,  margin, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f,  length, 0.0f,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
 
-    float margin = length / 3;
-    glVertex3d(-length, 0, 0);
-    glVertex3d(-margin, 0, 0);
-    glVertex3d(margin, 0, 0);
-    glVertex3d(length, 0, 0);
+        { 0.0f, 0.0f, -length,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f, -margin,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f,  margin,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f },
+        { 0.0f, 0.0f,  length,  0.0f, 0.0f, 1.0f,  r, g, b, 1.0f,  0.0f, 0.0f }
+    };
+    ModernShader::drawVertices(GL_LINES, verts, 12);
 
-    glVertex3d(0, -length, 0);
-    glVertex3d(0, -margin, 0);
-    glVertex3d(0, margin, 0);
-    glVertex3d(0, length, 0);
-
-    glVertex3d(0, 0, -length);
-    glVertex3d(0, 0, -margin);
-    glVertex3d(0, 0, margin);
-    glVertex3d(0, 0, length);
-
-    glEnd();
-
-    glPopMatrix();
-
-    glPopAttrib();
-
+    ModernShader::popModelView();
+    ModernShader::setLightingEnabled(prevLight);
 }
 
 void TranslationFeedback::setFrom(const Vector3<float> &from)

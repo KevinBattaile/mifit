@@ -2,6 +2,7 @@
 
 #include <opengl/QuatUtil.h>
 #include <opengl/OpenGL.h>
+#include <opengl/ModernShader.h>
 
 using namespace mi::math;
 
@@ -27,16 +28,15 @@ void Camera::setEye(const Vector3<float> &eye)
 
 void Camera::render()
 {
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    ModernShader::loadIdentityModelView();
 
     Quaternion<float> tmpQuat(getRotation());
     tmpQuat.inverse();
-    static float *floatBuffer = new float[16];
+    float floatBuffer[16];
     QuatUtil::store(tmpQuat, floatBuffer);
-    glMultMatrixf(floatBuffer);
+    ModernShader::multModelView(floatBuffer);
     Vector3<float> eye = getPosition();
-    glTranslatef(-eye.x, -eye.y, -eye.z);
+    ModernShader::translateModelView(-eye.x, -eye.y, -eye.z);
 }
 
 void Camera::lookAt(const Vector3<float> &target)
