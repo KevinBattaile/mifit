@@ -7294,6 +7294,31 @@ void MIGLWidget::OnUpdatePolyAlaChain(QAction *action)
 
 static long save_id = 1;
 
+bool MIGLWidget::confirmPdbExport(QWidget *parent, Molecule *model)
+{
+    int natoms = 0;
+    bool multiCharChain = false;
+    for (ResidueListIterator r = model->residuesBegin(); r != model->residuesEnd(); ++r)
+    {
+        natoms += r->atomCount();
+        if (r->chain_id_str().size() > 1)
+        {
+            multiCharChain = true;
+        }
+    }
+    if (natoms <= 99999 && !multiCharChain)
+    {
+        return true;
+    }
+    QMessageBox::StandardButton ret = QMessageBox::warning(
+        parent, "PDB format limitation",
+        "PDB format cannot represent more than 99,999 atoms or multi-character chain IDs, "
+        "so this model will not be written correctly.\n\n"
+        "Consider exporting as mmCIF (.cif) instead. Continue exporting as PDB anyway?",
+        QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+    return ret == QMessageBox::Yes;
+}
+
 bool MIGLWidget::SaveModelFile(Molecule *model, const char *description)
 {
     std::string pathname;
@@ -11934,11 +11959,24 @@ void MIGLWidget::exportCurrentModel()
     Molecule *model = Models->CurrentItem();
     if (model)
     {
-        const std::string &s = MIFileSelector("Save active model to PDB file", "", "", "pdb",
-                                              "PDB files (*.pdb)|*.pdb|All files (*.*)|*.*", MI_SAVE_MODE);
-        if (s.size())
+        QString mmcifFilter = "mmCIF files (*.cif *.mmcif)";
+        QString pdbFilter = "PDB files (*.pdb)";
+        QString selectedFilter = (model->ModelType == MoleculeType::mmCIF) ? mmcifFilter : pdbFilter;
+        QString s = QFileDialog::getSaveFileName(this, "Save active model", "",
+                                                 mmcifFilter + ";;" + pdbFilter + ";;All files (*)",
+                                                 &selectedFilter);
+        if (!s.isEmpty())
         {
-            model->SavePDBFile(s.c_str());
+            if (QFileInfo(s).suffix().isEmpty())
+            {
+                s += (selectedFilter == mmcifFilter) ? ".cif" : ".pdb";
+            }
+            const QString lower = s.toLower();
+            if (!lower.endsWith(".cif") && !lower.endsWith(".mmcif") && !MIGLWidget::confirmPdbExport(this, model))
+            {
+                return;
+            }
+            model->SaveCoordinateFile(s.toLocal8Bit().constData());
         }
     }
 }

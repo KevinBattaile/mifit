@@ -2176,6 +2176,39 @@ bool MIMoleculeBase::SavePDBFile(const char *savepath)
     return ret;
 }
 
+void MIMoleculeBase::FillGemmiMetadata(GemmiStructureMetadata &meta) const
+{
+    meta.compound = compound;
+}
+
+bool MIMoleculeBase::SaveMMCIFFile(const char *path, bool visibleOnly)
+{
+    GemmiStructureMetadata meta;
+    FillGemmiMetadata(meta);
+    bool ret = SaveGemmiStructure(path, residues, &connects, &meta, visibleOnly);
+    if (ret)
+    {
+        Logger::log(std::string("Saved model ") + path);
+    }
+    SetCoordsChanged(!ret);
+    return ret;
+}
+
+bool MIMoleculeBase::SaveCoordinateFile(const char *path)
+{
+    std::string p(path);
+    std::transform(p.begin(), p.end(), p.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+    auto endsWith = [&p](const char *suffix) {
+        size_t n = strlen(suffix);
+        return p.size() >= n && p.compare(p.size() - n, n, suffix) == 0;
+    };
+    if (endsWith(".cif") || endsWith(".mmcif"))
+    {
+        return SaveMMCIFFile(path);
+    }
+    return SavePDBFile(path);
+}
+
 void MIMoleculeBase::SecStrFromAngles()
 {
     Residue *res = residues;

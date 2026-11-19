@@ -617,6 +617,12 @@ public:
     bool SaveModelFile(Molecule *model, const char *description);
 
     /**
+     * Warns if the model cannot be faithfully written as PDB (more than 99,999 atoms or
+     * multi-character chain IDs). Returns false if the user chose to cancel the export.
+     */
+    static bool confirmPdbExport(QWidget *parent, Molecule *model);
+
+    /**
      * Return true if symmetry models should be shown as links (C-alpha only).
      */
     bool link_symm;

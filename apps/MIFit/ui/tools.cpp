@@ -112,7 +112,7 @@ void Tools::OnCustom()
             if (model)
             {
                 QString modelFile = dir.absoluteFilePath(QString("mifit_%1.pdb").arg(job->jobId()));
-                model->SavePDBFile(modelFile.toLatin1().constData());
+                model->SaveCoordinateFile(modelFile.toLatin1().constData());
                 subs["MODEL"] = modelFile;
             }
         }

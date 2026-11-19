@@ -5,6 +5,10 @@
 #include <gemmi/model.hpp>
 #include <gemmi/metadata.hpp>
 #include <gemmi/symmetry.hpp>
+#include <gemmi/polyheur.hpp>
+#include <gemmi/align.hpp>
+#include <gemmi/to_mmcif.hpp>
+#include <gemmi/to_cif.hpp>
 
 #include <ui/Logger.h>
 #include "MIAtom.h"
@@ -17,7 +21,9 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <map>
 #include <set>
 
@@ -387,7 +393,7 @@ Residue *loadGemmiStructureImpl(const std::string &path,
         for (size_t i = 0; i < st.meta.authors.size(); ++i)
         {
             if (i > 0)
-                out_meta->author += ", ";
+                out_meta->author += "; ";
             out_meta->author += st.meta.authors[i];
         }
 
@@ -447,6 +453,212 @@ Residue *LoadGemmiStructure(const std::string &path,
         if (connects)
             connects->clear();
         return nullptr;
+    }
+}
+
+namespace
+{
+
+std::string cifBlockNameFromPath(const std::string &path)
+{
+    size_t slash = path.find_last_of("/\\");
+    std::string stem = (slash == std::string::npos) ? path : path.substr(slash + 1);
+    size_t dot = stem.find('.');
+    if (dot != std::string::npos)
+        stem.erase(dot);
+    std::string out;
+    for (char ch : stem)
+    {
+        unsigned char c = static_cast<unsigned char>(ch);
+        out += (std::isalnum(c) || ch == '_' || ch == '-') ? ch : '_';
+    }
+    return out.empty() ? std::string("MIFIT") : out;
+}
+
+// Residue::name() holds the sequence number with an optional trailing insertion code, e.g. "12A".
+gemmi::SeqId parseSeqId(const std::string &name)
+{
+    const char *s = name.c_str();
+    char *end = nullptr;
+    long num = std::strtol(s, &end, 10);
+    if (end == s)
+        return gemmi::SeqId(1, ' ');
+    char icode = ' ';
+    while (*end == ' ')
+        ++end;
+    if (*end != '\0')
+        icode = *end;
+    return gemmi::SeqId(static_cast<int>(num), icode);
+}
+
+std::string gemmiChainName(const Residue *res)
+{
+    std::string name = res->chain_id_str();
+    while (!name.empty() && name.back() == ' ')
+        name.pop_back();
+    if (name.empty())
+    {
+        char c = static_cast<char>(res->chain_id() & 255);
+        if (c != ' ' && c != '\0')
+            name = std::string(1, c);
+    }
+    return name.empty() ? std::string("A") : name;
+}
+
+} // anonymous namespace
+
+bool SaveGemmiStructure(const std::string &path,
+                        Residue *res,
+                        const std::vector<Bond> *connects,
+                        const GemmiStructureMetadata *meta,
+                        bool visibleOnly)
+{
+    try
+    {
+        gemmi::Structure st;
+        st.name = cifBlockNameFromPath(path);
+
+        if (meta)
+        {
+            if (meta->is_crystal)
+            {
+                auto round4 = [](double v) { return std::round(v * 10000.0) / 10000.0; };
+                st.cell.set(round4(meta->a), round4(meta->b), round4(meta->c),
+                            round4(meta->alpha), round4(meta->beta), round4(meta->gamma));
+                st.spacegroup_hm = !meta->spacegroup_pdb_name.empty() ? meta->spacegroup_pdb_name
+                                                                      : meta->spacegroup_hm;
+            }
+            if (!meta->compound.empty())
+                st.info["_struct.title"] = meta->compound;
+            if (!meta->author.empty())
+            {
+                size_t start = 0;
+                while (start <= meta->author.size())
+                {
+                    size_t comma = meta->author.find(';', start);
+                    if (comma == std::string::npos)
+                        comma = meta->author.size();
+                    std::string a = meta->author.substr(start, comma - start);
+                    size_t b = a.find_first_not_of(' ');
+                    size_t e = a.find_last_not_of(' ');
+                    if (b != std::string::npos)
+                        st.meta.authors.push_back(a.substr(b, e - b + 1));
+                    start = comma + 1;
+                }
+            }
+        }
+
+        st.models.emplace_back(1);
+        gemmi::Model &model = st.models.back();
+
+        std::map<std::string, size_t> chain_index;
+        std::map<const MIAtom*, gemmi::AtomAddress> addresses;
+        std::map<const MIAtom*, std::string> restype;
+        int serial = 0;
+
+        for (Residue *r = res; r != nullptr; r = r->next())
+        {
+            std::string cname = gemmiChainName(r);
+            auto it = chain_index.find(cname);
+            if (it == chain_index.end())
+            {
+                model.chains.emplace_back(cname);
+                it = chain_index.emplace(cname, model.chains.size() - 1).first;
+            }
+
+            gemmi::Residue gres;
+            gres.seqid = parseSeqId(r->name());
+            gres.name = r->type();
+            gres.het_flag = (IsPeptide(*r) || IsNucleic(r)) ? 'A' : 'H';
+
+            std::vector<std::pair<const MIAtom*, gemmi::Atom*>> pending;
+            for (int i = 0; i < r->atomCount(); ++i)
+            {
+                MIAtom *a = r->atom(i);
+                if (visibleOnly && a->isHidden())
+                    continue;
+
+                gemmi::Atom gat;
+                gat.name = a->name();
+                gat.altloc = (a->altloc() == ' ') ? '\0' : a->altloc();
+                int z = a->atomicnumber();
+                gat.element = (z > 0) ? gemmi::Element(z) : gemmi::Element(gemmi::El::X);
+                int charge = a->formal_charge();
+                gat.charge = static_cast<signed char>(std::max(-8, std::min(8, charge)));
+                gat.serial = ++serial;
+                gat.pos = gemmi::Position(a->x(), a->y(), a->z());
+                gat.occ = a->occ();
+                gat.b_iso = a->BValue();
+                if (a->hasAnisotropicity())
+                {
+                    gat.aniso.u11 = a->U(0);
+                    gat.aniso.u22 = a->U(1);
+                    gat.aniso.u33 = a->U(2);
+                    gat.aniso.u12 = a->U(3);
+                    gat.aniso.u13 = a->U(4);
+                    gat.aniso.u23 = a->U(5);
+                }
+                addresses[a] = gemmi::AtomAddress(cname, gres.seqid, gres.name, gat.name, gat.altloc);
+                restype[a] = gres.name;
+                gres.atoms.push_back(std::move(gat));
+            }
+            if (gres.atoms.empty())
+                continue;
+            model.chains[it->second].residues.push_back(std::move(gres));
+        }
+
+        if (serial == 0)
+        {
+            Logger::message("Save failed! No atoms to write.");
+            return false;
+        }
+
+        if (connects)
+        {
+            int ncovale = 0;
+            int ndisulf = 0;
+            for (const Bond &b : *connects)
+            {
+                auto it1 = addresses.find(b.getAtom1());
+                auto it2 = addresses.find(b.getAtom2());
+                if (it1 == addresses.end() || it2 == addresses.end())
+                    continue;
+                gemmi::Connection conn;
+                bool disulf = std::strcmp(b.getAtom1()->name(), "SG") == 0
+                              && std::strcmp(b.getAtom2()->name(), "SG") == 0
+                              && restype[b.getAtom1()] == "CYS" && restype[b.getAtom2()] == "CYS";
+                conn.type = disulf ? gemmi::Connection::Disulf : gemmi::Connection::Covale;
+                conn.name = disulf ? ::format("disulf%d", ++ndisulf) : ::format("covale%d", ++ncovale);
+                conn.partner1 = it1->second;
+                conn.partner2 = it2->second;
+                st.connections.push_back(conn);
+            }
+        }
+
+        gemmi::setup_entities(st);
+        gemmi::assign_label_seq_id(st, false);
+
+        gemmi::cif::Document doc = gemmi::make_mmcif_document(st);
+        std::ofstream os(path.c_str(), std::ios::out | std::ios::trunc);
+        if (!os)
+        {
+            Logger::message("Save failed! Unable to open output file. Disk full?");
+            return false;
+        }
+        gemmi::cif::write_cif_to_stream(os, doc);
+        os.close();
+        if (os.fail())
+        {
+            Logger::message("Save failed! Error writing output file. Disk full?");
+            return false;
+        }
+        return true;
+    }
+    catch (const std::exception &e)
+    {
+        Logger::log("Gemmi error writing %s: %s", path.c_str(), e.what());
+        Logger::message(::format("Error writing structure file %s:\n%s", path.c_str(), e.what()));
+        return false;
     }
 }
 

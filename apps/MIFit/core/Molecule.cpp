@@ -2738,6 +2738,35 @@ void Molecule::Hide()
     moleculeChanged(this);
 }
 
+void Molecule::FillGemmiMetadata(chemlib::GemmiStructureMetadata &meta) const
+{
+    meta.compound = compound;
+    meta.author = author;
+    meta.source = source;
+    if (mapheader)
+    {
+        bool defaultCell = mapheader->a == 100.0f && mapheader->b == 100.0f && mapheader->c == 100.0f
+                           && mapheader->alpha == 90.0f && mapheader->beta == 90.0f && mapheader->gamma == 90.0f
+                           && mapheader->spgpno <= 1;
+        if (!defaultCell)
+        {
+            meta.is_crystal = true;
+            meta.a = mapheader->a;
+            meta.b = mapheader->b;
+            meta.c = mapheader->c;
+            meta.alpha = mapheader->alpha;
+            meta.beta = mapheader->beta;
+            meta.gamma = mapheader->gamma;
+            const char *hm = mapheader->GetHMSymbol();
+            if (hm)
+            {
+                meta.spacegroup_hm = hm;
+            }
+            meta.spacegroup_number = mapheader->spgpno;
+        }
+    }
+}
+
 void Molecule::FixHeaders(std::vector<std::string> &headers)
 {
     std::string s;

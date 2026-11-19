@@ -134,6 +134,7 @@ public:
     ~Molecule();
 
     void FixHeaders(std::vector<std::string> &headers);
+    void FillGemmiMetadata(chemlib::GemmiStructureMetadata &meta) const override;
 
     void TranslateResidueToCenter(chemlib::Residue *res, ViewPoint *viewpoint);
     void TranslateAtomsToCenter(std::vector<chemlib::MIAtom*>&, ViewPoint *viewpoint);

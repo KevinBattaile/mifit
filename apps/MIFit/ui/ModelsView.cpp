@@ -1542,7 +1542,7 @@ ModelsTree::ModelsTree(QWidget *parent)
 
     mapExportAction_ = _menu->addAction("Export");
     connect(mapExportAction_, SIGNAL(triggered()), SLOT(MapExport()));
-    modelExportAction_ = _menu->addAction("Export PDB...");
+    modelExportAction_ = _menu->addAction("Export Model...");
     connect(modelExportAction_, SIGNAL(triggered()), SLOT(ModelExport()));
     saveCrystalAction_ = _menu->addAction("Save to crystals");
     connect(saveCrystalAction_, SIGNAL(triggered()), SLOT(OnSaveToCrystals()));
@@ -2449,11 +2449,24 @@ void ModelsTree::ModelExport()
         if (data->model != NULL)
         {
             Molecule *model = data->model;
+            QString mmcifFilter = "mmCIF files (*.cif *.mmcif)";
+            QString pdbFilter = "PDB files (*.pdb)";
+            QString selectedFilter = (model->ModelType == MoleculeType::mmCIF) ? mmcifFilter : pdbFilter;
             QString s = QFileDialog::getSaveFileName(this, "Choose a name for the model file", "",
-                                                  "PDB file (*.pdb);;All files (*.*)");
+                                                     mmcifFilter + ";;" + pdbFilter + ";;All files (*)",
+                                                     &selectedFilter);
             if (!s.isEmpty())
             {
-                model->SavePDBFile(s.toLatin1().constData());
+                if (QFileInfo(s).suffix().isEmpty())
+                {
+                    s += (selectedFilter == mmcifFilter) ? ".cif" : ".pdb";
+                }
+                const QString lower = s.toLower();
+                if (!lower.endsWith(".cif") && !lower.endsWith(".mmcif") && !MIGLWidget::confirmPdbExport(this, model))
+                {
+                    continue;
+                }
+                model->SaveCoordinateFile(s.toLocal8Bit().constData());
             }
         }
     }

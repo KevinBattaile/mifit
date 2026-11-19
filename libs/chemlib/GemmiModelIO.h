@@ -55,6 +55,18 @@ Residue *LoadGemmiStructure(const std::string &path,
                             std::vector<Bond> *connects,
                             GemmiStructureMetadata *out_meta = nullptr);
 
+/**
+ * Writes the residue list as an mmCIF file via gemmi. Chains are grouped by
+ * Residue::chain_id_str() so multi-character chain IDs round-trip. Cell and
+ * spacegroup are written only when meta->is_crystal is set. When visibleOnly
+ * is true, hidden atoms are skipped.
+ */
+bool SaveGemmiStructure(const std::string &path,
+                        Residue *res,
+                        const std::vector<Bond> *connects,
+                        const GemmiStructureMetadata *meta,
+                        bool visibleOnly = false);
+
 } // namespace chemlib
 
 #endif // chemlib_GemmiModelIO_h

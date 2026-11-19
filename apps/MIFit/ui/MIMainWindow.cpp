@@ -1525,7 +1525,7 @@ void MIMainWindow::createMenus()
     fileSaveAsAction->setToolTip(tr("Save the document under a new name"));
     fileSaveAsAction->setShortcut(tr("Ctrl+Shift+S"));
 
-    exportModelAction = file_menu->addAction(tr("Export PDB..."), this, SLOT(OnExportModel()));
+    exportModelAction = file_menu->addAction(tr("Export Model..."), this, SLOT(OnExportModel()));
     exportModelAction->setToolTip(tr("Saves the current model as a PDB format file"));
     exportModelAction->setShortcut(tr("Ctrl+Alt+S"));
 

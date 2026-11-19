@@ -46,7 +46,7 @@ bool MIFitScriptObject::writeCurrentModel(const QString &file)
         return false;
     }
     QFileInfo fileInfo(file);
-    return model->SavePDBFile(fileInfo.absoluteFilePath().toLatin1().constData());
+    return model->SaveCoordinateFile(fileInfo.absoluteFilePath().toLatin1().constData());
 }
 
 QStringList MIFitScriptObject::dictionaryResidueList()

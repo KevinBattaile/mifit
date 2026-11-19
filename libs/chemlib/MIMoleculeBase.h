@@ -6,6 +6,7 @@
 
 #include "model.h"
 #include "Bond.h"
+#include "GemmiModelIO.h"
 #include "Residue_fwd.h"
 
 #if (__GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1))
@@ -192,6 +193,12 @@ namespace chemlib
 
         bool SavePDBFile(const char*);
         bool SavePDBFileVisible(const char *savepath);
+        bool SaveMMCIFFile(const char *path, bool visibleOnly = false);
+        // Writes mmCIF for .cif/.mmcif paths (case-insensitive), PDB otherwise.
+        bool SaveCoordinateFile(const char *path);
+
+        // Fills cell/spacegroup/title/author for mmCIF output; subclasses with that data override.
+        virtual void FillGemmiMetadata(GemmiStructureMetadata &meta) const;
 
         void SecStrFromAngles();
         void InitSeqPos();
