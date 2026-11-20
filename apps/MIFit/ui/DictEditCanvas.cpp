@@ -4,7 +4,6 @@
 #include <QQmlComponent>
 #include <QQmlContext>
 #include <QOpenGLWidget>
-#include <QQuickItem>
 #include <QKeyEvent>
 #include <QMenuBar>
 #include <QMessageBox>
@@ -85,68 +84,17 @@ bool ordering(const Bond &e1, const Bond &e2)
 }
 
 
-class DictEditMainItem : public QQuickItem
-{
-public:
-    DictEditMainItem(DictEditCanvas *widget, QQuickItem *parent = 0)
-        : QQuickItem(parent), glWidget(widget)
-    {
-        setZ(-std::numeric_limits<qreal>::max());
-    }
-
-    void setSize(const QSizeF &size)
-    {
-        update();
-        this->size = size;
-    }
-
-    virtual QRectF boundingRect() const
-    {
-        return QRectF(QPointF(), size);
-    }
-
-    virtual void paint(QPainter *painter)
-    {
-        glWidget->draw(painter);
-    }
-
-    virtual void mousePressEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMousePressEvent(event);
-    }
-
-    virtual void mouseMoveEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMouseMoveEvent(event);
-    }
-
-    virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *event)
-    {
-        glWidget->handleMouseReleaseEvent(event);
-    }
-
-    virtual void wheelEvent(QGraphicsSceneWheelEvent *event)
-    {
-        glWidget->handleWheelEvent(event);
-    }
-
-private:
-    DictEditCanvas *glWidget;
-    QSizeF size;
-};
-
 DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
-    : QQuickWidget(QUrl("qrc:/qml/root.qml")),
+    : QOpenGLWidget(parent),
       popupMenu(NULL),
       geomrefiner(NULL),
+      model(NULL),
       isRotating(false),
       isZooming(false),
       isPanning(false),
       parent(parent)
 {
-    this->setClearColor(Qt::black);
-    setResizeMode(SizeRootObjectToView);
-    mainItem = new DictEditMainItem(this, rootObject());
+    setFocusPolicy(Qt::StrongFocus);
 
     mouseTimer = new QTimer(this);
     mouseTimer->setSingleShot(true);
@@ -164,7 +112,7 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
     scene->frustum = frustum;
     scene->camera = camera;
     scene->renderer->setFrustum(frustum);
-    scene->renderer->setQOpenGLWidget(static_cast<QOpenGLWidget*>(viewport()));
+    scene->renderer->setQOpenGLWidget(this);
     scene->renderer->setRenderStyle(RenderStyle::getDefaultBallAndStick());
 
     cameraMouseOrbitor = new MouseArcBallOrbitor(camera, frustum->getFocalLength());
@@ -179,14 +127,6 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
 
     AtomStack = new Stack;
     scene->atomStack = AtomStack;
-    rootContext()->setContextProperty("root", QVariant::fromValue(rootObject()));
-    rootContext()->setContextProperty("stack", AtomStack);
-    rootContext()->setContextProperty("stackVisible", true);
-    QQmlComponent component(engine(), QUrl("qrc:/qml/stack.qml"));
-    stackItem = qobject_cast<QQuickItem *>(component.create());
-    if (stackItem)
-        stackItem->setParentItem(qobject_cast<QQuickItem*>(rootObject()));
-
     Models = new Displaylist;
     parent = parent;
 
@@ -212,7 +152,9 @@ DictEditCanvas::DictEditCanvas(DictEditDialog *parent)
 
     clearModifiedAngles();
 
-    ((Molecule*)geomrefiner->GetCurrentModel())->DrawAnnotationBox(false);
+    model = (Molecule*)geomrefiner->GetCurrentModel();
+    if (model)
+        model->DrawAnnotationBox(false);
     createPlanes();
 
     GetConfs(confs, geomrefiner->GetCurrentModel()->residuesBegin(), &geomrefiner->dict, geomrefiner->GetCurrentModel());
@@ -336,6 +278,10 @@ void DictEditCanvas::createMenus()
 void DictEditCanvas::initializeForRender()
 {
     model = (Molecule*)geomrefiner->GetCurrentModel();
+    if (model == NULL || model->residuesBegin() == model->residuesEnd())
+    {
+        return;
+    }
     Models->AddItem(model);
     scene->models = Models;
 
@@ -488,6 +434,10 @@ void DictEditCanvas::AutoFindChirals(bool copyChiralClass)
 
 void DictEditCanvas::UpdateGeom()
 {
+    if (model == NULL || geomrefiner == NULL)
+    {
+        return;
+    }
     if (bondsdirty)
     {
         std::sort(geomrefiner->dict.RefiBonds.begin(), geomrefiner->dict.RefiBonds.end(), ordering);
@@ -589,21 +539,48 @@ void DictEditCanvas::UpdateGeom()
     }
 }
 
+void DictEditCanvas::initializeGL()
+{
+    initializeOpenGLFunctions();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(true);
+}
+
+void DictEditCanvas::resizeGL(int w, int h)
+{
+    glViewport(0, 0, w, h);
+}
+
+void DictEditCanvas::paintGL()
+{
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    ModernShader::loadIdentityModelView();
+    draw(NULL);
+}
+
 void DictEditCanvas::draw(QPainter *painter)
 {
-    if (working)
+    if (working || model == NULL)
         return;
 
-    painter->save();
-    painter->beginNativePainting();
+    if (painter)
+    {
+        painter->save();
+        painter->beginNativePainting();
+    }
+    glEnable(GL_DEPTH_TEST);
+    ModernShader::setLightingEnabled(true);
+    glViewport(0, 0, width(), height());
     ModernShader::pushProjection();
     ModernShader::pushModelView();
+    ModernShader::loadIdentityModelView();
 
     if (!initialized)
     {
         initialized = true;
         initializeForRender();
-//        return;
     }
 
     working = true;
@@ -614,8 +591,11 @@ void DictEditCanvas::draw(QPainter *painter)
 
     ModernShader::popProjection();
     ModernShader::popModelView();
-    painter->endNativePainting();
-    painter->restore();
+    if (painter)
+    {
+        painter->endNativePainting();
+        painter->restore();
+    }
     working = false;
 }
 
@@ -707,10 +687,10 @@ void DictEditCanvas::OnTimer()
     beginDragAction();
 }
 
-void DictEditCanvas::handleMousePressEvent(QGraphicsSceneMouseEvent *evt)
+void DictEditCanvas::mousePressEvent(QMouseEvent *evt)
 {
     evt->accept();
-    QPoint point = evt->scenePos().toPoint();
+    QPoint point = evt->position().toPoint();
 
     if (evt->button() & Qt::LeftButton)
     {
@@ -749,10 +729,10 @@ void DictEditCanvas::handleMousePressEvent(QGraphicsSceneMouseEvent *evt)
 }
 
 
-void DictEditCanvas::handleMouseMoveEvent(QGraphicsSceneMouseEvent *evt)
+void DictEditCanvas::mouseMoveEvent(QMouseEvent *evt)
 {
     evt->accept();
-    QPoint point = evt->scenePos().toPoint();
+    QPoint point = evt->position().toPoint();
 
     if (isRotating || isZooming || isPanning)
     {
@@ -789,9 +769,9 @@ void DictEditCanvas::handleMouseMoveEvent(QGraphicsSceneMouseEvent *evt)
     }
 }
 
-void DictEditCanvas::handleMouseReleaseEvent(QGraphicsSceneMouseEvent *evt)
+void DictEditCanvas::mouseReleaseEvent(QMouseEvent *evt)
 {
-    QPoint point = evt->scenePos().toPoint();
+    QPoint point = evt->position().toPoint();
     evt->accept();
 
     if (evt->button() == Qt::LeftButton)
@@ -837,12 +817,12 @@ void DictEditCanvas::handleMouseReleaseEvent(QGraphicsSceneMouseEvent *evt)
 }
 
 
-void DictEditCanvas::handleWheelEvent(QGraphicsSceneWheelEvent *evt)
+void DictEditCanvas::wheelEvent(QWheelEvent *evt)
 {
     evt->accept();
-    if (evt->delta() != 0)
+    if (evt->angleDelta().y() != 0)
     {
-        float change = (float) evt->delta();
+        float change = evt->angleDelta().y() / 120.0f;
         frustum->setFieldOfView(frustum->getFieldOfView() + change);
         updateViewDependentSettings();
         reRender();
@@ -890,6 +870,13 @@ void DictEditCanvas::endDragAction()
 bool DictEditCanvas::handlePick(const QPoint &point)
 {
     bool somethingPicked = false;
+
+    makeCurrent();
+    struct DoneCurrent
+    {
+        DictEditCanvas *c;
+        ~DoneCurrent() { c->doneCurrent(); }
+    } doneGuard = { this };
 
     vector<GLuint> ids = mousePicker->pick(point.x(), point.y(), frustum, annotationPickingRenderable);
     Annotation *annot = NULL;
@@ -987,16 +974,14 @@ bool DictEditCanvas::handlePick(const QPoint &point)
 
 void DictEditCanvas::ReDraw()
 {
-    mainItem->update();
-    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
+    update();
 }
 
 void DictEditCanvas::resizeEvent(QResizeEvent *evt)
 {
-    mainItem->setSize(evt->size());
     stereoView->setSize(evt->size().width(), evt->size().height());
     updateViewDependentSettings();
-    QQuickWidget::resizeEvent(evt);
+    QOpenGLWidget::resizeEvent(evt);
 }
 
 void DictEditCanvas::updateViewDependentSettings()
@@ -2832,8 +2817,7 @@ void DictEditCanvas::createPlanes()
 
 void DictEditCanvas::reRender()
 {
-    mainItem->update();
-    qApp->processEvents(QEventLoop::ExcludeUserInputEvents);
+    update();
 }
 
 int DictEditCanvas::getEventX(QMouseEvent &e)
