@@ -89,7 +89,10 @@ void LocalSocketScript::processBuffer(QLocalSocket *connection)
         if (length > kMaxPayload)
         {
             Logger::log("Script request too large (%u bytes); closing connection", length);
-            connection->disconnectFromServer();
+            buf.clear();
+            buffers.remove(connection);
+            connection->abort();
+            connection->deleteLater();
             return;
         }
         if (static_cast<quint32>(buf.size()) < 4 + length)
@@ -126,4 +129,5 @@ void LocalSocketScript::sendReply(QLocalSocket *connection, const QByteArray &js
     frame.append(char(length & 0xff));
     frame.append(json);
     connection->write(frame);
+    connection->flush();
 }

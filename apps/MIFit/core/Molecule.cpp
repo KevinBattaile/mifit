@@ -38,6 +38,7 @@ Molecule::Molecule(int type)
     ModelType = type;
     visible = dots_visible = labels_visible = annots_visible = 1;
     HVisible = 1;
+    drawBox = false;
     modelnumber = 0; // 0 means uninitialized valid numbers are above 0
     nribbons = 0;
     ribbon_coloring = 0;
@@ -65,6 +66,7 @@ Molecule::Molecule(Residue *reslist, std::string cmpd, FILE *fp, Bond *conns, in
     pathname = cmpd;
     compound = cmpd;
     HVisible = 1;
+    drawBox = false;
     modelnumber = 0; // 0 means uninitialized valid numbers are above 0
     nribbons = 0;
     ribbon_coloring = 0;

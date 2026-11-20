@@ -87,6 +87,8 @@ namespace chemlib
         bool EmptyDictCheck();
         bool DictHCheck(Residue *res, unsigned int &level);
         bool DictContains(const std::string &res) const;
+        // True only if res is already in the dictionary (never lazy-loads).
+        bool DictLoaded(const std::string &res) const;
 
         unsigned int GetNumberInDict(const char *type);
 
@@ -257,6 +259,7 @@ namespace chemlib
         unsigned int BuildInternalBumpBonds(MIAtomList &CurrentAtoms, std::vector<Bond> &bonds);
         void Clear();
         void build_map();
+        void add_to_map(Residue *res);
 
         bool RefiHBonds;
         bool RefiSecStruct;
@@ -274,7 +277,8 @@ namespace chemlib
         dict_map DictMap;
 
         std::string monomerLibraryDir;
-        std::unordered_set<std::string> monLibMisses; // codes known to be absent from the monomer library
+        std::unordered_set<std::string> monLibMisses; // upper-cased codes known to be absent from the monomer library
+        bool lazyLoading = false;                     // suppresses per-load summary logging
 
         float sigmaangle;
         float sigmabond;

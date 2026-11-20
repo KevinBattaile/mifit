@@ -81,9 +81,13 @@ int mmtz_get_column( const mmtzfile file, const int icol, mmtz_column* col, mmtz
   int j = 0, iset = 0;
   umtz_hdr* hpt;
 
+  col->label[0] = '\0';
+  col->type[0] = '\0';
+
   /* search for the n'th column */
   for ( hpt = umtz_first_head( file ); hpt < umtz_last_head( file ); hpt++ )
     if ( umtz_keymatch( hpt->data, "COLU" ) ) if ( j++ == icol ) break;
+  if ( hpt >= umtz_last_head( file ) ) return -1; /* no such column */
 
   /* grab column info - dataset absent in old files */
   if ( hpt->data[78] == ' ' )

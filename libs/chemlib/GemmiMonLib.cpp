@@ -454,11 +454,63 @@ bool convertChemComp(const gemmi::ChemComp &cc, gemmi::cif::Block &block,
         {
             continue; // "both" imposes no handedness
         }
+
+        std::string nb[3] = {rc.id1.atom, rc.id2.atom, rc.id3.atom};
+        if (useCoords || useBlockCoords)
+        {
+            // Prefer three heavy-atom neighbours: hydrogens are often missing from models
+            // and would otherwise drop the restraint.
+            bool anyH = false;
+            for (int k = 0; k < 3; ++k)
+            {
+                anyH = anyH || atomMap[nb[k]]->IsHydrogen();
+            }
+            if (anyH)
+            {
+                std::vector<std::string> heavy;
+                for (size_t b = 0; b < cc.rt.bonds.size() && heavy.size() < 3; ++b)
+                {
+                    const gemmi::Restraints::Bond &rb = cc.rt.bonds[b];
+                    const std::string *other = rb.id1.atom == rc.id_ctr.atom ? &rb.id2.atom
+                                               : rb.id2.atom == rc.id_ctr.atom ? &rb.id1.atom : NULL;
+                    std::map<std::string, MIAtom*>::iterator o = other ? atomMap.find(*other) : atomMap.end();
+                    if (o != atomMap.end() && !o->second->IsHydrogen())
+                    {
+                        heavy.push_back(*other);
+                    }
+                }
+                if (heavy.size() == 3)
+                {
+                    for (int k = 0; k < 3; ++k)
+                    {
+                        nb[k] = heavy[k];
+                    }
+                }
+            }
+
+            // Same triple-product convention as Chiral::Measure
+            const MIAtom *ctr = atomMap[rc.id_ctr.atom];
+            float v[3][3];
+            for (int k = 0; k < 3; ++k)
+            {
+                const MIAtom *a = atomMap[nb[k]];
+                v[k][0] = a->x() - ctr->x();
+                v[k][1] = a->y() - ctr->y();
+                v[k][2] = a->z() - ctr->z();
+            }
+            const float volume = (v[0][1] * v[1][2] - v[0][2] * v[1][1]) * v[2][0]
+                                 + (v[0][2] * v[1][0] - v[0][0] * v[1][2]) * v[2][1]
+                                 + (v[0][0] * v[1][1] - v[0][1] * v[1][0]) * v[2][2];
+            if (std::fabs(volume) > 1e-3f)
+            {
+                c.order = volume > 0 ? COUNTERCLOCKWISE : CLOCKWISE;
+            }
+        }
         copyName(c.restype, sizeof(c.restype), type);
         copyName(c.center, sizeof(c.center), rc.id_ctr.atom);
-        c.AddAtom(rc.id1.atom.c_str(), 0);
-        c.AddAtom(rc.id2.atom.c_str(), 1);
-        c.AddAtom(rc.id3.atom.c_str(), 2);
+        c.AddAtom(nb[0].c_str(), 0);
+        c.AddAtom(nb[1].c_str(), 1);
+        c.AddAtom(nb[2].c_str(), 2);
         entry.chirals.push_back(c);
     }
 

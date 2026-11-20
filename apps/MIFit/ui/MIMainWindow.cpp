@@ -778,7 +778,7 @@ std::string MIMainWindow::OnLoadLigand(std::string wildcard, std::string filenam
         entry.res->setType(code);
         entry.res->setName("1");
     }
-    if (MIFitDictionary()->DictContains(entry.res->type()))
+    if (MIFitDictionary()->DictLoaded(entry.res->type()))
     {
         std::string rplc_warn = "The residue code you have entered is already in use.  ";
         rplc_warn += "Replace the existing residue \"";
@@ -2518,9 +2518,13 @@ void MIMainWindow::addJob(const QString &menuName, const QString &jobName, const
 
 void MIMainWindow::runPythonScript(const std::string &file)
 {
+    QString python = BatchJobManager::pythonExe();
+    if (python.isEmpty())
+        return;
     BatchJob *pythonJob = GetJobManager()->CreateJob();
-    pythonJob->setProgram(BatchJobManager::pythonExe());
+    pythonJob->setProgram(python);
     pythonJob->setArguments(file.c_str());
 
-    pythonJob->StartJob();
+    if (!pythonJob->StartJob())
+        BatchJobManager::resetPythonExe();
 }

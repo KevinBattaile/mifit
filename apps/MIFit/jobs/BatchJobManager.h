@@ -78,6 +78,7 @@ public:
     void saveJobMenu(QMenu *menu);
 
     static QString pythonExe();
+    static void resetPythonExe();
 
 signals:
     void jobAdded(BatchJob*);

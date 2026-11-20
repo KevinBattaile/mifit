@@ -75,7 +75,7 @@ typedef umtzfile*mmtzfile;
 typedef struct mmtz_column_
 {
     char label[31];
-    char type[2];
+    char type[3]; /* 2 chars + NUL: sscanf("%2s") writes a terminator */
 } mmtz_column;
 
 /* info about mtz dataset */

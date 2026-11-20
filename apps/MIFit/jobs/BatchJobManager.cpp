@@ -18,7 +18,7 @@ namespace
     {
         QProcess python;
         python.start(pythonPath, QStringList() << "-");
-        if (python.waitForStarted())
+        if (python.waitForStarted(3000))
         {
             python.write("try:\n"
                          "    import PyQt6\n"
@@ -30,11 +30,13 @@ namespace
                          "    except ImportError:\n"
                          "        pass\n");
             python.closeWriteChannel();
-            if (python.waitForFinished())
+            if (python.waitForFinished(3000))
             {
                 QString output = python.readAllStandardOutput();
                 return output.contains("PYQT_OK");
             }
+            python.kill();
+            python.waitForFinished(500);
         }
         return false;
     }
@@ -90,9 +92,25 @@ namespace
 
 } // anonymous namespace
 
+namespace
+{
+    QString &cachedPythonExe()
+    {
+        static QString path;
+        return path;
+    }
+}
+
+void BatchJobManager::resetPythonExe()
+{
+    cachedPythonExe().clear();
+    QSettings settings;
+    settings.remove("pythonExe");
+}
+
 QString BatchJobManager::pythonExe()
 {
-    static QString pythonExePath;
+    QString &pythonExePath = cachedPythonExe();
     if (pythonExePath.isEmpty() || !QFile::exists(pythonExePath))
     {
         QSettings settings;
@@ -265,7 +283,8 @@ void BatchJobManager::handleCustomJobAction()
     }
     job->setArguments(customJob.arguments);
     job->setWorkingDirectory(customJob.workingDirectory);
-    job->StartJob();
+    if (!job->StartJob() && customJob.executable == "python")
+        resetPythonExe();
 }
 
 BatchJob *BatchJobManager::CreateJob()

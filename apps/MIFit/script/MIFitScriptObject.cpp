@@ -106,16 +106,13 @@ QString MIFitScriptObject::directory()
 
 bool MIFitScriptObject::writeCurrentModel(const QString &file, QString &error)
 {
-    MIGLWidget *doc = MIMainWindow::instance()->currentMIGLWidget();
-    if (!doc)
-    {
-        error = "no current document";
-        return false;
-    }
-    Molecule *model = doc->GetDisplaylist()->GetCurrentModel();
+    MIMainWindow *window = MIMainWindow::instance();
+    MIGLWidget *doc = window ? window->currentMIGLWidget() : NULL;
+    Displaylist *displaylist = doc ? doc->GetDisplaylist() : NULL;
+    Molecule *model = displaylist ? displaylist->GetCurrentModel() : NULL;
     if (!model)
     {
-        error = "no current model";
+        error = "no active model";
         return false;
     }
     QFileInfo fileInfo(file);
@@ -147,6 +144,10 @@ QStringList MIFitScriptObject::spacegroupList()
 
 void MIFitScriptObject::addJob(const QString &menuName, const QString &jobName, const QString &executable, const QStringList &arguments, const QString &workingDirectory)
 {
+    if (!MIMainWindow::instance())
+    {
+        return;
+    }
     MIMainWindow::instance()->addJob(menuName, jobName, executable, arguments, workingDirectory);
 }
 
@@ -154,7 +155,7 @@ bool MIFitScriptObject::setJobWorkDir(const QString &jobId, const QString &workD
 {
     bool ok;
     unsigned long jobIdNum = jobId.toULong(&ok);
-    if (!ok)
+    if (!ok || !MIMainWindow::instance() || !MIMainWindow::instance()->GetJobManager())
     {
         return false;
     }

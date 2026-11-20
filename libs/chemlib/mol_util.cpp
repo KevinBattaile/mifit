@@ -50,7 +50,7 @@ const char *Atomic_Name(int atomic_number)
         "ES", "FM", "MD", "NO", "LR",
         "RF"
     };
-    if (atomic_number > NELEMENTS)
+    if (atomic_number < 0 || atomic_number > NELEMENTS)
     {
         return per_tab[6];
     }
@@ -87,7 +87,7 @@ const char *Left_Atomic_Name(int atomic_number)
         "ES", "FM", "MD", "NO", "LR",
         "RF"
     };
-    if (atomic_number > NELEMENTS)
+    if (atomic_number < 0 || atomic_number > NELEMENTS)
     {
         return per_tab[6];
     }
