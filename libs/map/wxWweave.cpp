@@ -26,7 +26,7 @@ static inline bool any_under(int i1, int i2, int i3, int level)
 
 static int inside_sphere(float p[3])
 {
-    register float x, y, z;
+    float x, y, z;
     x = p[X] - InclusionCenter[X];
     x *= x;
     y = p[Y] - InclusionCenter[Y];

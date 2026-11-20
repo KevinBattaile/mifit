@@ -11,9 +11,6 @@ namespace chemlib
     void EqualizeSpacing(std::vector<Substituent> &subs);
 
     struct LeastTheta
-        : public std::binary_function<const Substituent&,
-                                      const Substituent&,
-                                      bool>
     {
         bool operator()(const Substituent &c1, const Substituent &c2) const
         {

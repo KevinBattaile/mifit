@@ -30,7 +30,7 @@ void CopyPlane(PLANEDICT *plane, const PLANE &planeSource)
 
 void CopyTorsion(TORSDICT *torsion, const TORSION &torSource)
 {
-    memset(torsion, 0, sizeof(TORSDICT) );
+    torsion->Clear();
     strncpy(torsion->type, torSource.type, 11);
 
     strncpy(torsion->name[0], torSource.getAtom1()->name(), chemlib::MAXATOMNAME);

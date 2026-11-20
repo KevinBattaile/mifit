@@ -13,12 +13,16 @@ namespace chemlib
     public:
         TORSDICT()
         {
-            memset(this, 0, sizeof(TORSDICT));
+            Clear();
         }
 
         void Clear()
         {
-            memset(this, 0, sizeof(TORSDICT));
+            memset(restype, 0, sizeof(restype));
+            memset(type, 0, sizeof(type));
+            memset(name, 0, sizeof(name));
+            memset(ideal, 0, sizeof(ideal));
+            nideal = 0;
         }
 
         bool AddAngle(float angle)

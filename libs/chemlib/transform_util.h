@@ -19,7 +19,7 @@ namespace chemlib
         atom->setPosition(atom->x(), -atom->y(), atom->z());
     }
 
-    struct DoTransformAtom : public std::binary_function<MIAtom*, const double*, bool>
+    struct DoTransformAtom
     {
         bool operator()(MIAtom *atom, const double *mat) const;
     };
@@ -43,7 +43,7 @@ namespace chemlib
         return true;
     }
 
-    struct DoTranslateAtom : public std::binary_function<MIAtom*, const double*, bool>
+    struct DoTranslateAtom
     {
         bool operator()(MIAtom *atom, const double *v) const;
     };
@@ -68,7 +68,7 @@ namespace chemlib
             return;
         }
 
-        std::for_each(atoms.begin(), atoms.end(), std::bind2nd(DoTransformAtom(), mat));
+        std::for_each(atoms.begin(), atoms.end(), [mat](MIAtom *a) { return DoTransformAtom()(a, mat); });
     }
 
     inline void TranslateAtoms3D(const double *v, MIAtomList &atoms)
@@ -78,7 +78,7 @@ namespace chemlib
             return;
         }
 
-        std::for_each(atoms.begin(), atoms.end(), std::bind2nd(DoTranslateAtom(), v));
+        std::for_each(atoms.begin(), atoms.end(), [v](MIAtom *a) { return DoTranslateAtom()(a, v); });
     }
 
     void RotateIntoXYPlane(MIAtom *ref, MIAtomList &branch);

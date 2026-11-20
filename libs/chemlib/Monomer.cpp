@@ -149,7 +149,7 @@ const MIAtom*Monomer::atomByName(const std::string &name) const
 {
     MIAtom_const_iter i;
 
-    i = find_if(atoms_.begin(), atoms_.end(), std::bind2nd(MatchesAtomName(), name));
+    i = find_if(atoms_.begin(), atoms_.end(), [&name](const MIAtom *a) { return MatchesAtomName()(a, name); });
 
     if (i != atoms_.end())
     {

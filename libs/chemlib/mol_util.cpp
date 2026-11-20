@@ -906,7 +906,7 @@ void TrimBonds(std::vector<Bond> &trimmed_bonds,
 
 int CountResBonds(const Residue &res, const std::vector<Bond> &bonds)
 {
-    return count_if(bonds.begin(), bonds.end(), bind2nd(ResContainsBond(), res));
+    return count_if(bonds.begin(), bonds.end(), [&res](const Bond &b) { return ResContainsBond()(b, res); });
 }
 
 //	int CountResBonds(const RESIDUE &res, const std::vector<Bond> &bonds) {

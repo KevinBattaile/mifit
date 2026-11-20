@@ -69,7 +69,7 @@ void GenerateDictionary(Residue *res,
     {
         ap.first = BondLengths[j].getAtom1();
         ap.second = BondLengths[j].getAtom2();
-        bnd = find_if(bonds.begin(), bonds.end(), std::bind2nd(ContainsAtoms(), ap));
+        bnd = find_if(bonds.begin(), bonds.end(), [&ap](const Bond &b) { return ContainsAtoms()(b, ap); });
         if (bnd != bonds.end())
         {
             bnd->ideal_length = BondLengths[j].ideal_length;

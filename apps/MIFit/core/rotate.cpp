@@ -25,7 +25,7 @@ rotate(
     double eval[6];             /* eigenvalues */
     double omega[6][6];         /* ( 0  U ) */
                                 /* ( U' 0 ) */
-    register int i, j, p;
+    int i, j, p;
     double sum, tmp;
     double h[6][3];
     double k[6][3];

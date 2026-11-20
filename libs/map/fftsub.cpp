@@ -15,7 +15,7 @@
 
 #define c_mul(a, b, c) cmul(a.re, a.im, b.re, b.im, c.re, c.im)
 #define cmul(a_x, a_y, b_x, b_y, c_x, c_y) { \
-        register float _cmul1_, _cmul2_, _cmul3_, _cmul4_; \
+        float _cmul1_, _cmul2_, _cmul3_, _cmul4_; \
         _cmul1_ = (a_x); \
         _cmul2_ = (a_y); \
         _cmul3_ = (b_x); \
@@ -890,7 +890,7 @@ static double HalfSplineOrder;
 double B_(double x, int j, int N)
 {
     double tj0, tj1, tj2, tj3, tj4;
-    register double y;
+    double y;
     if (SplineOrder == QUADRATIC)
     {
         tj3 = t_(j + SplineOrder, N);

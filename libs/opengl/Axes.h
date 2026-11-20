@@ -15,7 +15,7 @@ namespace mi
 
             static int labelsFontSize;
 
-            std::auto_ptr<Text> labelsFont;
+            std::unique_ptr<Text> labelsFont;
 
             int fontSize;
 
@@ -27,7 +27,9 @@ namespace mi
 
         public:
 
-            Axes(std::auto_ptr<Text> font);
+            Axes(std::unique_ptr<Text> font);
+
+            ~Axes();
 
             void setFontSize(int fontSize);
 

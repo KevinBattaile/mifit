@@ -17,7 +17,7 @@ namespace chemlib
 {
 
 //Queries an atom as to whether its name matches the given string
-    struct MatchesAtomName : public std::binary_function<MIAtom*, std::string, bool>
+    struct MatchesAtomName
     {
         bool operator()(const MIAtom *atom, const std::string &query) const;
     };
@@ -29,7 +29,7 @@ namespace chemlib
     }
 
 //Queries a bond as to whether it contains the given atom
-    struct ContainsAtom : public std::binary_function<Bond, const MIAtom*, bool>
+    struct ContainsAtom
     {
         bool operator()(const Bond &bond, const MIAtom *atom) const;
     };
@@ -40,7 +40,7 @@ namespace chemlib
     }
 
 //Queries a bond as to whether it contains the given atom pair
-    struct ContainsAtoms : public std::binary_function<Bond, std::pair<const MIAtom*, MIAtom*>, bool>
+    struct ContainsAtoms
     {
         bool operator()(const Bond &bond, std::pair<const MIAtom*, const MIAtom*> atom_pair) const;
     };
@@ -52,7 +52,7 @@ namespace chemlib
                || (bond.getAtom1() == atom_pair.second && bond.getAtom2() == atom_pair.first);
     }
 
-    struct ContainsCoAtoms : public std::binary_function<Bond, std::pair<const MIAtom*, const MIAtom*>, bool>
+    struct ContainsCoAtoms
     {
         bool operator()(const Bond &bond, std::pair<const MIAtom*, const MIAtom*> atom_pair) const;
     };
@@ -65,7 +65,7 @@ namespace chemlib
     }
 
 //Queries a bond as to whether it contains the given atom
-    struct ContainsNewAtom : public std::binary_function<Bond, const MIAtom*, bool>
+    struct ContainsNewAtom
     {
         bool operator()(const Bond &bond, const MIAtom *atom) const;
     };
@@ -76,7 +76,7 @@ namespace chemlib
     }
 
 //Queries a bond as to whether it contains the given atom & another heavy atom
-    struct ContainsHvyNabor : public std::binary_function<Bond, const MIAtom*, bool>
+    struct ContainsHvyNabor
     {
         inline bool operator()(const Bond &bond, const MIAtom *atom) const
         {
@@ -91,7 +91,7 @@ namespace chemlib
                    const std::vector<Bond> &bonds,
                    MIAtomList &nabors);
 
-    struct IsHydrogen : std::unary_function<const MIAtom*, bool>
+    struct IsHydrogen
     {
         inline bool operator()(const MIAtom *atom) const
         {
@@ -107,21 +107,21 @@ namespace chemlib
 
     inline int Degree(const MIAtom *atom, const std::vector<Bond> bonds)
     {
-        return std::count_if(bonds.begin(), bonds.end(), std::bind2nd(ContainsAtom(), atom));
+        return std::count_if(bonds.begin(), bonds.end(), [atom](const Bond &b) { return ContainsAtom()(b, atom); });
     }
 
     inline int HeavyDegree(const MIAtom *atom)
     {
         return std::count_if(atom->nabors().begin(),
                              atom->nabors().end(),
-                             std::not1(IsHydrogen()));
+                             [](const MIAtom *a) { return !IsHydrogen()(a); });
     }
 
     inline int HeavyDegree(const MIAtom *atom, const std::vector<Bond> &bonds)
     {
         return std::count_if(bonds.begin(),
                              bonds.end(),
-                             std::bind2nd(ContainsHvyNabor(), atom));
+                             [atom](const Bond &b) { return ContainsHvyNabor()(b, atom); });
     }
 
     bool AlreadyBonded(const MIAtom *atom1,
@@ -135,7 +135,7 @@ namespace chemlib
     {
         return std::find_if(bonds.begin(),
                             bonds.end(),
-                            std::bind2nd(ContainsCoAtoms(), std::pair<const MIAtom*, const MIAtom*>(atom1, atom2)));
+                            [=](const Bond &b) { return ContainsCoAtoms()(b, std::make_pair(atom1, atom2)); });
     }
 
     inline std::vector<Bond>::const_iterator
@@ -145,7 +145,7 @@ namespace chemlib
     {
         return std::find_if(bonds.begin(),
                             bonds.end(),
-                            std::bind2nd(ContainsCoAtoms(), std::pair<const MIAtom*, const MIAtom*>(atom1, atom2)));
+                            [=](const Bond &b) { return ContainsCoAtoms()(b, std::make_pair(atom1, atom2)); });
     }
 
     float AngleFromGeom(int geometry);
@@ -186,7 +186,7 @@ namespace chemlib
     int GetAtomIndex(const MIAtom *patm, const Residue &res);
 
 //Queries a residue as to whether it contains the given bond
-    struct ResContainsBond : public std::binary_function<Bond, const Residue, bool>
+    struct ResContainsBond
     {
         bool operator()(const Bond &bond, const Residue &res) const;
     };

@@ -73,7 +73,7 @@ void CMolwViewScene::initializeForRender()
 {
     if (axes[renderer->getContext()] == NULL)
     {
-        axes[renderer->getContext()] = new Axes(std::auto_ptr<mi::opengl::Text>(new Text(QFont("Helvetica", 12, QFont::Bold))));
+        axes[renderer->getContext()] = new Axes(std::unique_ptr<mi::opengl::Text>(new Text(QFont("Helvetica", 12, QFont::Bold))));
         axes[renderer->getContext()]->setFontSize(10);
         axes[renderer->getContext()]->setLength(30);
     }

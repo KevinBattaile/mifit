@@ -25,7 +25,7 @@ namespace chemlib
 //				void functions.  Hence, this new version.
 /////////////////////////////////////////////////////////////////////////////
     template<class T>
-    class void_mem_fun_ref_t : public std::unary_function<T, void>
+    class void_mem_fun_ref_t
     {
     public:
         explicit void_mem_fun_ref_t(void(T::*funct)()) : ptr(funct)
@@ -62,7 +62,7 @@ namespace chemlib
 //				void functions.  Hence, this new version.
 /////////////////////////////////////////////////////////////////////////////
     template<class T>
-    class void_mem_fun_t : public std::unary_function<T*, void>
+    class void_mem_fun_t
     {
     public:
         explicit void_mem_fun_t(void(T::*funct)()) : ptr(funct)

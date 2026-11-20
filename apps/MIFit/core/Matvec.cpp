@@ -1,10 +1,10 @@
 #define PRODUCT(a, b) ((a)*(b))
 void matvec(double *m, double *v, double *rv)
 {
-    register double *r;
+    double *r;
     double work[3]; /* workarea for forming inner product sums */
-    register int i;
-    register double tally;
+    int i;
+    double tally;
 
     r = &work[0];
 

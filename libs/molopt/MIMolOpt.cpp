@@ -1948,7 +1948,7 @@ void MIMolOpt::RefiAllTorsions(Residue *reslist)
                 continue;
             }
             if (find_if(dict.RefiTorsions.begin(), dict.RefiTorsions.end(),
-                        bind2nd(TorsionMatch(), dict.TorsDict[i])) !=
+                        [&](const chemlib::TORSION &t) { return TorsionMatch()(t, dict.TorsDict[i]); }) !=
                 dict.RefiTorsions.end())
             {
                 continue;

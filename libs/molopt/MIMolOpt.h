@@ -260,7 +260,7 @@ float bond_dist(chemlib::MIAtom *atom1, chemlib::MIAtom *atom2);
 //@}
 float bond_radius(chemlib::MIAtom *atom);
 
-struct TorsionMatch : public std::binary_function<chemlib::TORSION, chemlib::TORSDICT, bool>
+struct TorsionMatch
 {
     bool operator()(const chemlib::TORSION &t, const chemlib::TORSDICT &td) const;
 };

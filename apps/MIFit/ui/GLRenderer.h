@@ -2,6 +2,7 @@
 #define mifit_ui_GLRenderer_h
 
 #include "core/corelib.h"
+#include <memory>
 
 #include <math/Vector3.h>
 
@@ -47,7 +48,7 @@ class GLRenderer
     int width;
     int height;
     float xyDisplayRange;
-    std::auto_ptr<mi::opengl::Text> labelsFont_;
+    std::unique_ptr<mi::opengl::Text> labelsFont_;
 
     RenderStyle style;
     bool hideHydrogens;

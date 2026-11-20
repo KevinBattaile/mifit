@@ -34,7 +34,7 @@ void ViewPointIO::load(ViewPoint &vp, FILE *fp)
     float v1, v2, v3, v4, v5, v6, v7, v8, v9;
     std::string buf;
 
-    std::auto_ptr<io> ioObj(io::defaultIo());
+    std::unique_ptr<io> ioObj(io::defaultIo());
     io &file = *ioObj;
     file.attach(fp);
     while (file.readLine(buf) != 0)

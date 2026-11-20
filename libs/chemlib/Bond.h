@@ -115,7 +115,7 @@ namespace chemlib
     private:
     };
 
-    struct IsAromatic : public std::unary_function<Bond, bool>
+    struct IsAromatic
     {
         bool operator()(const Bond &bond) const;
     };

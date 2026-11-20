@@ -13,9 +13,8 @@ class io
 
 protected:
 
-    // Give auto_ptr<> access to destructor
+    // Give unique_ptr<> access to destructor
     friend struct std::default_delete<io>;
-    friend class std::auto_ptr<io>;
 
     static void setDefaultIo(io *defaultIo);
 

@@ -467,7 +467,7 @@ namespace chemlib
 
     };
 
-    struct IsHeavy : std::unary_function<MIAtom*, bool>
+    struct IsHeavy
     {
         inline bool operator()(const MIAtom *atom) const
         {

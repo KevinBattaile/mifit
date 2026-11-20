@@ -16,11 +16,13 @@ namespace opengl
 
 int Axes::labelsFontSize = 16;
 
-Axes::Axes(std::auto_ptr<Text> font)
-    : labelsFont(font)
+Axes::Axes(std::unique_ptr<Text> font)
+    : labelsFont(std::move(font))
 {
 
 }
+
+Axes::~Axes() = default;
 
 void Axes::setFontSize(int fontSize)
 {

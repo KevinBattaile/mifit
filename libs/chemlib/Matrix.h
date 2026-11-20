@@ -814,7 +814,7 @@ namespace TNT
         int i = perm.size(), sign = 1, offset;
         while (i > 0)
         {
-            offset = std::count_if(perm.begin() + i, perm.end(), std::bind1st(std::greater<int>(), perm[i]) );
+            offset = std::count_if(perm.begin() + i, perm.end(), [&](int x) { return perm[i] > x; });
             if ((i + perm[i] - offset) % 2 == 1)
             {
                 sign *= -1;

@@ -86,7 +86,6 @@ namespace chemlib
     }
 
     struct IsBondRotatable
-        : std::unary_function<Bond, bool>
     {
         bool operator()(const Bond &bond) const;
     };
