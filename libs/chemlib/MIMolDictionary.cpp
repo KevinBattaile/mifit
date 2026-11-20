@@ -13,6 +13,7 @@
 #include "mol_util_private.h"
 #include "DictResidue.h"
 #include "mmCIF.h"
+#include "GemmiMonLib.h"
 #include <ui/Logger.h>
 
 namespace chemlib
@@ -1958,10 +1959,15 @@ TORSION*MIMolDictionary::getTORSION(Residue *res, const char *type, Residue *pre
 bool MIMolDictionary::LoadDictionary(const char *path, bool append, bool replace,
                                      unsigned int new_h_level)
 {
-    FILE *fp = fopen(path, "r");
-    if (!fp)
+    const bool isCif = IsMonomerCifFile(path);
+    FILE *fp = NULL;
+    if (!isCif)
     {
-        return false;
+        fp = fopen(path, "r");
+        if (!fp)
+        {
+            return false;
+        }
     }
     Logger::log("Loading Dictionary:");
     Logger::log(path);
@@ -1981,9 +1987,186 @@ bool MIMolDictionary::LoadDictionary(const char *path, bool append, bool replace
     {
         HLevel = new_h_level;
     }
+    if (isCif)
+    {
+        return LoadMonomerCif(path, append, replace);
+    }
     bool result = LoadDict(fp, append, replace) != 0;
     fclose(fp);
     return result;
+}
+
+bool MIMolDictionary::LoadMonomerCif(const char *path, bool append, bool replace_old)
+{
+    GemmiMonLibResult loaded;
+    if (!chemlib::LoadMonomerCif(path, loaded))
+    {
+        Logger::log("No monomers could be loaded from %s", path);
+        return false;
+    }
+
+    // Can't append to a non-existent dictionary
+    if (ResDict == NULL)
+    {
+        append = false;
+    }
+
+    // Choose which of the loaded monomers to add
+    std::set<std::string> existing;
+    if (append && !replace_old)
+    {
+        for (Residue *r = ResDict; r != NULL; r = r->next())
+        {
+            existing.insert(r->type());
+        }
+    }
+    std::vector<GemmiMonLibEntry*> keep;
+    std::set<std::string> seen;
+    for (size_t i = 0; i < loaded.entries.size(); ++i)
+    {
+        const std::string type = loaded.entries[i].res->type();
+        if (existing.count(type) || !seen.insert(type).second)
+        {
+            Logger::log("Skipping monomer %s: already in dictionary", type.c_str());
+            continue;
+        }
+        keep.push_back(&loaded.entries[i]);
+    }
+    if (keep.empty())
+    {
+        return true;
+    }
+
+    if (append && replace_old)
+    {
+        for (size_t k = 0; k < keep.size(); ++k)
+        {
+            const std::string oldtype = keep[k]->res->type();
+            Residue *oldres = ResDict;
+            while (oldres != NULL)
+            {
+                Residue *next = oldres->next();
+                if (oldres->type() == oldtype)
+                {
+                    oldres->removeFromList();
+                    if (oldres == ResDict)
+                    {
+                        ResDict = next;
+                    }
+                    FreeResidueList(oldres);
+                }
+                oldres = next;
+            }
+            for (size_t j = 0; j < PlaneDict.size();)
+            {
+                if (oldtype == PlaneDict[j].restype)
+                {
+                    PlaneDict.erase(PlaneDict.begin() + j);
+                }
+                else
+                {
+                    j++;
+                }
+            }
+            for (size_t j = 0; j < TorsDict.size();)
+            {
+                if (oldtype == TorsDict[j].restype)
+                {
+                    TorsDict.erase(TorsDict.begin() + j);
+                }
+                else
+                {
+                    j++;
+                }
+            }
+            for (size_t j = 0; j < ChiralDict.size();)
+            {
+                if (oldtype == ChiralDict[j].restype)
+                {
+                    ChiralDict.erase(ChiralDict.begin() + j);
+                }
+                else
+                {
+                    j++;
+                }
+            }
+        }
+    }
+
+    if (!append)
+    {
+        for (size_t i = 0; i < RefiPlanes.size(); i++)
+        {
+            free(RefiPlanes[i].atoms);
+        }
+        RefiPlanes.clear();
+        PlaneDict.clear();
+        Synonym.clear();
+        TorsDict.clear();
+        ChiralDict.clear();
+        TorsNames.clear();
+        if (ResDict)
+        {
+            FreeResidueList(ResDict);
+            ResDict = NULL;
+        }
+    }
+
+    // Chain the new residues and hand over ownership; explicit bonds and
+    // angles are stored on the residue so DictResidue uses them rather than
+    // distance-derived ones.
+    Residue *head = NULL;
+    Residue *tail = NULL;
+    for (size_t k = 0; k < keep.size(); ++k)
+    {
+        GemmiMonLibEntry &e = *keep[k];
+        e.res->setPrefBonds(e.bonds);
+        e.res->setPrefAngles(e.angles);
+        for (size_t i = 0; i < e.torsions.size(); ++i)
+        {
+            TorsNames.insert(std::string(e.torsions[i].type));
+            TorsDict.push_back(e.torsions[i]);
+        }
+        PlaneDict.insert(PlaneDict.end(), e.planes.begin(), e.planes.end());
+        ChiralDict.insert(ChiralDict.end(), e.chirals.begin(), e.chirals.end());
+
+        if (head == NULL)
+        {
+            head = tail = e.res;
+        }
+        else
+        {
+            tail = tail->insertResidue(e.res);
+        }
+        e.res = NULL;
+    }
+
+    if (append && ResDict != NULL)
+    {
+        Residue *last = ResDict;
+        while (last->next() != NULL)
+        {
+            last = last->next();
+        }
+        last->insertResidue(head);
+    }
+    else
+    {
+        ResDict = head;
+    }
+
+    nResDict = 0;
+    for (Residue *r = ResDict; r != NULL; r = r->next())
+    {
+        r->setName1(singleletter(r->type().c_str()));
+        nResDict++;
+    }
+
+    Logger::log("%d monomers loaded from %s", (int)keep.size(), path);
+    Logger::log("%d torsions, %d planes, %d chirals in dictionary",
+                (int)TorsDict.size(), (int)PlaneDict.size(), (int)ChiralDict.size());
+    build_map();
+    return true;
 }
 
 static bool in_to_add(vector<std::string> &to_add, char *type)

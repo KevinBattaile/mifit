@@ -582,24 +582,24 @@ ChiralAtomKeyIndices::ChiralAtomKeyIndices(std::vector<std::string> &names)
 
 unsigned char DecodeCifBondOrder(const std::string &value)
 {
-    if (strcasecmp(value.c_str(), "single")
-        || strcasecmp(value.c_str(), "sing"))
+    if (strcasecmp(value.c_str(), "single") == 0
+        || strcasecmp(value.c_str(), "sing") == 0)
     {
         return SINGLEBOND;
     }
-    else if (strcasecmp(value.c_str(), "double")
-             || strcasecmp(value.c_str(), "doub"))
+    else if (strcasecmp(value.c_str(), "double") == 0
+             || strcasecmp(value.c_str(), "doub") == 0)
     {
         return DOUBLEBOND;
     }
-    else if (strcasecmp(value.c_str(), "triple")
-             || strcasecmp(value.c_str(), "trip"))
+    else if (strcasecmp(value.c_str(), "triple") == 0
+             || strcasecmp(value.c_str(), "trip") == 0)
     {
         return TRIPLEBOND;
     }
-    else if (strcasecmp(value.c_str(), "aromatic")
-             || strcasecmp(value.c_str(), "arom")
-             || strcasecmp(value.c_str(), "delo"))
+    else if (strcasecmp(value.c_str(), "aromatic") == 0
+             || strcasecmp(value.c_str(), "arom") == 0
+             || strcasecmp(value.c_str(), "delo") == 0)
     {
         return PARTIALDOUBLEBOND;
     }

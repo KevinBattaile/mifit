@@ -60,6 +60,8 @@ namespace chemlib
                                    const std::string &homedir);
         bool LoadDictionary(const char *path, bool append = false, bool replace = false,
                             unsigned int new_h_level = DictionaryHLevel::Unknown);
+        // Loads a CCP4/Refmac/AceDRG-style monomer .cif (or .cif.gz) via gemmi
+        bool LoadMonomerCif(const char *path, bool append = false, bool replace = false);
         int LoadRes(Residue *respdb, bool append = false, bool replace_old = true,
                     bool rplc_backbone_tor = true);
         //	int LoadRes(RESIDUE *respdb, std::vector<ANGLE> &angles

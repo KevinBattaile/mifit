@@ -17,7 +17,7 @@ if(NOT gemmi_FOUND)
     FetchContent_Declare(
         gemmi
         GIT_REPOSITORY https://github.com/project-gemmi/gemmi.git
-        GIT_TAG        v0.6.5
+        GIT_TAG        v0.7.5
     )
     FetchContent_MakeAvailable(gemmi)
 endif()
@@ -120,7 +120,8 @@ add_library(chemlib STATIC
     libs/chemlib/FirstToken.h
     libs/chemlib/GemmiModelIO.cpp
     libs/chemlib/GemmiModelIO.h
-    libs/chemlib/GeomSaver.cpp
+    libs/chemlib/GemmiMonLib.cpp
+    libs/chemlib/GemmiMonLib.h    libs/chemlib/GeomSaver.cpp
     libs/chemlib/GeomSaver.h
     libs/chemlib/Ligand.cpp
     libs/chemlib/Ligand.h

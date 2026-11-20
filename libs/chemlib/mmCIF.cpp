@@ -881,7 +881,7 @@ bool mmCIF::Read(FILE *fp, MIMolInfo &mol)
             continue;
         }
         //Get angles
-        if (block.FindLoop("chemp_comp_angle", loop))
+        if (block.FindLoop("chem_comp_angle", loop))
         {
             SlurpAngles(loop, atom_map, mol.angles, mol.res);
         }
@@ -1483,16 +1483,18 @@ bool mmCIF::SlurpPlaneAtoms(CifLoop &loop,
         if (col == nCols)
         {
             p = plane_map.find(plane_name);
-            if (p == plane_map.end()
-                && !res_name.empty()
-                && !plane_name.empty()
-                && !atom_name.empty())
+            if (p == plane_map.end())
             {
-                PLANEDICT plane;
-                plane.natoms = 1;
-                strncpy(plane.restype, res_name.c_str(), sizeof(plane.restype) - 1);
-                strncpy(plane.name[0], atom_name.c_str(), sizeof(plane.name[0]) - 1);
-                plane_map[plane_name] = plane;
+                if (!res_name.empty()
+                    && !plane_name.empty()
+                    && !atom_name.empty())
+                {
+                    PLANEDICT plane;
+                    plane.natoms = 1;
+                    strncpy(plane.restype, res_name.c_str(), sizeof(plane.restype) - 1);
+                    strncpy(plane.name[0], atom_name.c_str(), sizeof(plane.name[0]) - 1);
+                    plane_map[plane_name] = plane;
+                }
             }
             else if (!res_name.empty()
                      && !atom_name.empty())
@@ -1590,7 +1592,7 @@ bool mmCIF::SlurpChirals(CifLoop &loop, map<std::string, CHIRALDICT> &chiral_map
 bool mmCIF::SlurpChiralAtoms(CifLoop &loop, map<std::string, CHIRALDICT> &chiral_map)
 {
     CifTokenizer toker(loop._values);
-    int nCols = 0;
+    int nCols = loop._names.size();
 
     ChiralAtomKeyIndices index(loop._names);
 
