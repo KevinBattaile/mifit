@@ -20,14 +20,20 @@ namespace
         python.start(pythonPath, QStringList() << "-");
         if (python.waitForStarted())
         {
-            python.write("from PyQt4 import QtCore\n");
-            python.write("print 'PyQt', QtCore.PYQT_VERSION_STR\n");
+            python.write("try:\n"
+                         "    import PyQt6\n"
+                         "    print('PYQT_OK')\n"
+                         "except ImportError:\n"
+                         "    try:\n"
+                         "        import PySide6\n"
+                         "        print('PYQT_OK')\n"
+                         "    except ImportError:\n"
+                         "        pass\n");
             python.closeWriteChannel();
             if (python.waitForFinished())
             {
-                QString versions = python.readAll();
-                if (versions.contains("PyQt 4.7"))
-                    return true;
+                QString output = python.readAllStandardOutput();
+                return output.contains("PYQT_OK");
             }
         }
         return false;
@@ -36,31 +42,43 @@ namespace
     QString checkPyQtPath(QString dir)
     {
 #ifdef Q_OS_WIN32
-        const QString exe = "python.exe";
+        const QStringList exes = QStringList() << "python3.exe" << "python.exe";
 #else
-        const QString exe = "python";
+        const QStringList exes = QStringList() << "python3" << "python";
 #endif
         QDir d(dir);
-        if (d.exists(exe))
+        foreach (const QString &exe, exes)
         {
-            QString exePath = d.absoluteFilePath(exe);
-            if (testPyQt(exePath))
-                return exePath;
+            if (d.exists(exe))
+            {
+                QString exePath = d.absoluteFilePath(exe);
+                if (testPyQt(exePath))
+                    return exePath;
+            }
         }
         return QString();
     }
 
     QString findPyQt()
     {
-        QString pythonExePath;
 #ifdef Q_OS_WIN32
         const QString separator = ";";
+        const QString binSubdir = "Scripts";
 #else
         const QString separator = ":";
+        const QString binSubdir = "bin";
 #endif
 
-        QString pathEnv = getenv("PATH");
-        QStringList paths = pathEnv.split(separator);
+        // prefer the active virtual/conda environment, then PATH
+        QStringList paths;
+        const QByteArray venv = qgetenv("VIRTUAL_ENV");
+        if (!venv.isEmpty())
+            paths << QDir(QString::fromLocal8Bit(venv)).filePath(binSubdir);
+        const QByteArray conda = qgetenv("CONDA_PREFIX");
+        if (!conda.isEmpty())
+            paths << QDir(QString::fromLocal8Bit(conda)).filePath(binSubdir);
+        paths << QString::fromLocal8Bit(qgetenv("PATH")).split(separator);
+
         foreach (QString p, paths)
         {
             QString exePath = checkPyQtPath(p);
@@ -96,9 +114,9 @@ QString BatchJobManager::pythonExe()
             if (!testPyQt(fileName))
             {
                 if (QMessageBox::warning(0, "Invalid Python",
-                                         "MIFit requires Python with PyQt4 installed\n"
+                                         "MIFit requires Python 3 with PyQt6 (or PySide6) installed\n"
                                          "  Python: http://python.org/\n"
-                                         "  PyQt4: http://www.riverbankcomputing.co.uk/software/pyqt",
+                                         "  PyQt6: https://pypi.org/project/PyQt6/",
                                          QMessageBox::Retry | QMessageBox::Abort) != QMessageBox::Retry)
                     break;
             }

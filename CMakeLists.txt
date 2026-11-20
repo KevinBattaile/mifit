@@ -470,14 +470,15 @@ target_include_directories(jobs PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/jobs)
 target_link_libraries(jobs PUBLIC core Qt6::Core Qt6::Widgets Qt6::Network Qt6::Core5Compat Qt6::QuickWidgets)
 
 # script
-#add_library(script STATIC
-#    apps/MIFit/script/LocalSocketScript.cpp
-#    apps/MIFit/script/LocalSocketScript.h
-#    apps/MIFit/script/MIFitScriptObject.cpp
-#    apps/MIFit/script/MIFitScriptObject.h
-#)
-#target_include_directories(script PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/script)
-#target_link_libraries(script PUBLIC core Qt6::Core Qt6::Network)
+add_library(script STATIC
+    apps/MIFit/script/LocalSocketScript.cpp
+    apps/MIFit/script/LocalSocketScript.h
+    apps/MIFit/script/MIFitScriptObject.cpp
+    apps/MIFit/script/MIFitScriptObject.h
+)
+target_include_directories(script PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/script)
+# script and ui reference each other (static libraries, so a cycle is allowed)
+target_link_libraries(script PUBLIC ui jobs core Qt6::Core Qt6::Network)
 
 # ui
 add_library(ui STATIC
@@ -633,8 +634,7 @@ add_library(ui STATIC
 )
 target_include_directories(ui PUBLIC ${MIFIT_INCLUDE_DIRS} apps/MIFit/ui)
 target_link_libraries(ui PUBLIC
-	#    core jobs script
-    core jobs 
+	core jobs script
     OpenGL::GL OpenGL::GLU
     Qt6::Core Qt6::Gui Qt6::Widgets Qt6::OpenGL Qt6::OpenGLWidgets Qt6::Network Qt6::Core5Compat Qt6::PrintSupport
 )
@@ -660,7 +660,7 @@ target_include_directories(MIFit PRIVATE
 target_link_libraries(MIFit PRIVATE
     ui
     jobs
-    #    script
+    script
     core
     ligand
     map

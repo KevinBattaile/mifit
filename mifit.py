@@ -1,5 +1,7 @@
+import json
 import os
-from PyQt4 import QtCore, QtGui, QtNetwork
+import socket
+import struct
 
 __doc__ = """MIFit interaction module
 
@@ -7,6 +9,11 @@ Defines functions for interfacing with a MIFit session.
 The environment must have MIFIT_SOCKET_ID for an
 associated MIFit session. This will be the case for
 scripts run from the MIFit Jobs menu.
+
+Protocol: a Unix domain socket (MIFIT_SOCKET_ID is its path); each message is
+a 4-byte big-endian length followed by UTF-8 JSON.
+Request: {"cmd": name, "args": [...]}
+Reply:   {"ok": true, "result": ...} or {"ok": false, "error": message}
 """
 
 socketId = None
@@ -22,91 +29,81 @@ if 'MIFIT_DIR' in os.environ.keys():
 if 'SHELX_DIR' in os.environ.keys():
     shelxDir = os.environ['SHELX_DIR']
 
+_TIMEOUT = 30.0
 
-def exec_script(script):
-    """Executes the given script in the associated MIFit session"""
-    global socketId
-    result = QtCore.QString()
-    sock = QtNetwork.QLocalSocket()
-    sock.connectToServer(socketId)
-    if sock.waitForConnected():
 
-        stream = QtCore.QDataStream(sock)
-        stream.setVersion(QtCore.QDataStream.Qt_4_5)
+def _recv_exact(sock, count):
+    chunks = []
+    while count > 0:
+        chunk = sock.recv(count)
+        if not chunk:
+            raise ConnectionError('MIFit closed the connection')
+        chunks.append(chunk)
+        count -= len(chunk)
+    return b''.join(chunks)
 
-        data = QtCore.QByteArray()
-        out = QtCore.QDataStream(data, QtCore.QIODevice.WriteOnly)
-        out.setVersion(QtCore.QDataStream.Qt_4_5)
-        out.writeUInt32(0)
-        out << QtCore.QString(script)
-        out.device().seek(0)
-        out.writeUInt32(data.size() - 8)
-        sock.write(data)
-        sock.flush()
 
-        moreInput = True
-        dataSize = 0
-        while moreInput:
-            QtGui.qApp.processEvents()
-            if dataSize == 0:
-                if sock.bytesAvailable() < 8:
-                    continue
-                dataSize = stream.readUInt32()
-            if sock.bytesAvailable() < dataSize:
-                continue
-            stream >> result
-            moreInput = False
-
+def call(cmd, *args):
+    """Sends a command to the associated MIFit session and returns its result.
+Raises RuntimeError if MIFit reports an error."""
+    if not socketId:
+        raise RuntimeError('MIFIT_SOCKET_ID is not set; not running from a MIFit session')
+    payload = json.dumps({'cmd': cmd, 'args': list(args)}).encode('utf-8')
+    sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    sock.settimeout(_TIMEOUT)
+    try:
+        sock.connect(socketId)
+        sock.sendall(struct.pack('>I', len(payload)) + payload)
+        length = struct.unpack('>I', _recv_exact(sock, 4))[0]
+        reply = json.loads(_recv_exact(sock, length).decode('utf-8'))
+    finally:
         sock.close()
-    else:
-        print 'error connecting to local socket', socketId
-    sock = None
-    return result
+    if not reply.get('ok'):
+        raise RuntimeError(reply.get('error', 'unknown MIFit error'))
+    return reply.get('result')
+
 
 def version():
     """Returns the version of MIFit"""
-    return str(exec_script("mifit.version"))
+    return str(call('version'))
 
 def directory():
     """Returns the installation directory for MIFit"""
-    return str(exec_script("mifit.directory()"))
+    return str(call('directory'))
 
 def scriptPort():
-    """Returns the identifier for the local sockect port used for interaction with MIFit"""
+    """Returns the identifier for the local socket used for interaction with MIFit"""
     global socketId
     return socketId
 
 def setScriptPort(id):
-    """Sets the identifier for the local sockect port used for interaction with MIFit.
+    """Sets the identifier for the local socket used for interaction with MIFit.
 Usually this will be obtained automatically from the MIFIT_SOCKET_ID environment variable."""
     global socketId
     socketId = id
 
 def setJobWorkDir(dir):
     """Sets the working directory for the current job (when the script is run from MIFit)"""
-    script = "mifit.setJobWorkDir('" + os.environ['MIFIT_JOB_ID'] + "', '" + dir + "')"
-    return exec_script(script)
+    return call('setJobWorkDir', os.environ['MIFIT_JOB_ID'], dir)
 
 def writeCurrentModel(file):
     """Causes MIFit to output the current model to the given file"""
-    return exec_script("mifit.writeCurrentModel('" + file + "')")
+    return call('writeCurrentModel', file)
 
 def dictionaryResidueList():
     """Returns the dictionary residue list from MIFit"""
-    result = exec_script("mifit.dictionaryResidueList()")
+    result = call('dictionaryResidueList')
     if result:
-        return str(result).split(',')
+        return list(result)
     return None
 
 def spacegroupList():
     """Returns the spacegroup list from MIFit"""
-    result = exec_script("mifit.spacegroupList()")
+    result = call('spacegroupList')
     if result:
-        return str(result).split(',')
+        return list(result)
     return None
 
 def addJob(menuName, jobName, executable, arguments, workingDirectory):
     """Adds a new custom job to the MIFit Job menu"""
-    args = "[ '" + "', '".join(arguments) + "' ]"
-    script = "mifit.addJob('%s', '%s', '%s', %s, '%s')" % (menuName, jobName, executable, args, workingDirectory)
-    exec_script(script)
+    call('addJob', menuName, jobName, executable, list(arguments), workingDirectory)

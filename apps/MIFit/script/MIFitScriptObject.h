@@ -1,33 +1,31 @@
 #ifndef script_MIFitScriptObject_h
 #define script_MIFitScriptObject_h
 
-#include <QObject>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QString>
 #include <QStringList>
-class QMenu;
-class QScriptEngine;
 
-class MIFitScriptObject : public QObject
+/**
+ * Executes the commands that external scripts (MIExpert) can send to MIFit.
+ * Commands: version, directory, setJobWorkDir, writeCurrentModel,
+ * dictionaryResidueList, spacegroupList, addJob.
+ */
+class MIFitScriptObject
 {
-    Q_OBJECT
-    Q_PROPERTY( QString version READ version )
-
 public:
-    MIFitScriptObject(QScriptEngine *engine, QObject *parent = 0);
+    // Returns {"ok": true, "result": ...} or {"ok": false, "error": "..."}
+    QJsonObject execute(const QString &cmd, const QJsonArray &args);
 
-    void setJobMenu(QMenu *jobMenu);
-
-public slots:
+private:
     QString version();
     QString directory();
-    bool writeCurrentModel(const QString &file);
+    bool writeCurrentModel(const QString &file, QString &error);
     QStringList dictionaryResidueList();
     QStringList spacegroupList();
     void addJob(const QString &menuName, const QString &jobName, const QString &executable, const QStringList &arguments, const QString &workingDirectory);
-    void setJobWorkDir(const QString &jobId, const QString &workDir);
-
-private:
-    QScriptEngine *engine;
-    QMenu *jobMenu;
+    bool setJobWorkDir(const QString &jobId, const QString &workDir);
 };
 
 #endif // ifndef script_MIFitScriptObject_h

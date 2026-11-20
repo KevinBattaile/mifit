@@ -2499,13 +2499,14 @@ void MIMainWindow::saveJobMenu()
 
 void MIMainWindow::createLocalSocketScript()
 {
-    _scriptSocket = nullptr; // new LocalSocketScript(this);
+    _scriptSocket = new LocalSocketScript(this);
+    Logger::log("Script socket: %s", _scriptSocket->name().toLocal8Bit().constData());
 }
 
 QString MIMainWindow::scriptPort() const
 {
     if (_scriptSocket)
-        return QString();
+        return _scriptSocket->name();
     return QString();
 }
 

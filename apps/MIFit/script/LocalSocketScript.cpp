@@ -1,104 +1,129 @@
 #include "LocalSocketScript.h"
-#include <QBuffer>
-#include <QDataStream>
+#include <QCoreApplication>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLocalServer>
 #include <QLocalSocket>
-#include <QScriptEngine>
-#include <QStringList>
 #include <ui/Logger.h>
 #include "MIFitScriptObject.h"
 
-#ifdef _WIN32
-#include <process.h>
-#endif
+namespace
+{
+const quint32 kMaxPayload = 16 * 1024 * 1024;
+}
 
 LocalSocketScript::LocalSocketScript(QObject *parent)
     : QObject(parent),
-      engine(0)
+      commands(new MIFitScriptObject)
 {
-    uint id = static_cast<uint>(getpid());
-    name_ = "MIFit-" + QString::number(id, 16);
+    const QString serverName = "MIFit-" + QString::number(static_cast<quint64>(QCoreApplication::applicationPid()), 16);
 
     localServer = new QLocalServer(this);
-    localServer->listen(name_);
+    localServer->setSocketOptions(QLocalServer::UserAccessOption);
+    QLocalServer::removeServer(serverName); // stale socket from a crashed session
+    if (!localServer->listen(serverName))
+    {
+        Logger::log("Local scripting socket failed: %s", localServer->errorString().toLocal8Bit().constData());
+    }
     connect(localServer, SIGNAL(newConnection()),
             this, SLOT(handleConnection()));
+}
 
-    Logger::log(("Local scripting socket: " + name_).toStdString());
+LocalSocketScript::~LocalSocketScript()
+{
+    delete commands;
 }
 
 QString LocalSocketScript::name() const
 {
-    return name_;
+    return localServer->fullServerName();
 }
 
 void LocalSocketScript::handleConnection()
 {
-    if (!engine)
+    while (QLocalSocket *connection = localServer->nextPendingConnection())
     {
-        engine = new QScriptEngine(this);
-        QObject *mifitObject = new MIFitScriptObject(engine, this);
-        QScriptValue objectValue = engine->newQObject(mifitObject);
-        engine->globalObject().setProperty("mifit", objectValue);
+        buffers.insert(connection, QByteArray());
+        connect(connection, SIGNAL(readyRead()), this, SLOT(handleReadyRead()));
+        connect(connection, SIGNAL(disconnected()), this, SLOT(handleDisconnected()));
+        if (connection->bytesAvailable() > 0)
+        {
+            readFrom(connection); // data may have arrived before readyRead was connected
+        }
     }
+}
 
-    QLocalSocket *connection = localServer->nextPendingConnection();
-    connect(connection, SIGNAL(disconnected()),
-            connection, SLOT(deleteLater()));
+void LocalSocketScript::handleDisconnected()
+{
+    QLocalSocket *connection = qobject_cast<QLocalSocket*>(sender());
     if (connection)
     {
-        QString script;
-        bool moreInput = true;
-        QDataStream stream(connection);
-        stream.setVersion(QDataStream::Qt_4_5);
-        quint32 dataSize = 0;
-        while (moreInput)
-        {
-            if (!connection->waitForReadyRead())
-                break;
-            if (dataSize == 0)
-            {
-                if (connection->bytesAvailable() < sizeof(quint32))
-                    continue;
-                stream >> dataSize;
-            }
-            if (connection->bytesAvailable() < dataSize)
-                continue;
-            stream >> script;
-            moreInput = false;
-        }
-        Logger::debug(("script: " + script).toStdString());
+        buffers.remove(connection);
+        connection->deleteLater();
+    }
+}
 
-        QString result;
-        QScriptValue scriptResult = engine->evaluate(script, name_);
-        if (engine->hasUncaughtException())
+void LocalSocketScript::handleReadyRead()
+{
+    readFrom(qobject_cast<QLocalSocket*>(sender()));
+}
+
+void LocalSocketScript::readFrom(QLocalSocket *connection)
+{
+    if (!connection || !buffers.contains(connection))
+    {
+        return;
+    }
+    buffers[connection].append(connection->readAll());
+    processBuffer(connection);
+}
+
+void LocalSocketScript::processBuffer(QLocalSocket *connection)
+{
+    QByteArray &buf = buffers[connection];
+    while (buf.size() >= 4)
+    {
+        const uchar *p = reinterpret_cast<const uchar*>(buf.constData());
+        const quint32 length = (quint32(p[0]) << 24) | (quint32(p[1]) << 16) | (quint32(p[2]) << 8) | quint32(p[3]);
+        if (length > kMaxPayload)
         {
-            QScriptValue exception = engine->uncaughtException();
-            int lineNumber = engine->uncaughtExceptionLineNumber();
-            QStringList backtrace = engine->uncaughtExceptionBacktrace();
-            result = QString("Exception %1 on line %2\n\t%3")
-                     .arg(exception.toString()).arg(lineNumber)
-                     .arg(backtrace.join("\n\t"));
+            Logger::log("Script request too large (%u bytes); closing connection", length);
+            connection->disconnectFromServer();
+            return;
+        }
+        if (static_cast<quint32>(buf.size()) < 4 + length)
+        {
+            return; // wait for the rest
+        }
+        const QByteArray payload = buf.mid(4, length);
+        buf.remove(0, 4 + length);
+
+        QJsonObject reply;
+        QJsonParseError parseError;
+        QJsonDocument doc = QJsonDocument::fromJson(payload, &parseError);
+        if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        {
+            reply["ok"] = false;
+            reply["error"] = "invalid JSON request";
         }
         else
         {
-            result = scriptResult.toString();
+            QJsonObject request = doc.object();
+            reply = commands->execute(request["cmd"].toString(), request["args"].toArray());
         }
-
-        Logger::debug(("script result: " + result).toStdString());
-
-        QByteArray data;
-        QDataStream out(&data, QIODevice::WriteOnly);
-        out.setVersion(QDataStream::Qt_4_5);
-
-        out << quint32(0) << result;
-
-        out.device()->seek(0);
-        out << quint32(data.size() - sizeof(quint32));
-        connection->write(data);
-        connection->flush();
-        connection->waitForDisconnected();
-        connection->close();
-        Logger::debug("script done");
+        sendReply(connection, QJsonDocument(reply).toJson(QJsonDocument::Compact));
     }
+}
+
+void LocalSocketScript::sendReply(QLocalSocket *connection, const QByteArray &json)
+{
+    const quint32 length = static_cast<quint32>(json.size());
+    QByteArray frame;
+    frame.append(char((length >> 24) & 0xff));
+    frame.append(char((length >> 16) & 0xff));
+    frame.append(char((length >> 8) & 0xff));
+    frame.append(char(length & 0xff));
+    frame.append(json);
+    connection->write(frame);
 }
