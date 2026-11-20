@@ -121,12 +121,12 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
             }
             if (attributes.localName(i) == "secstr")
             {
-                strcpy(buf, attributes.value(i).toStdString().c_str());
+                snprintf(buf, sizeof(buf), "%s", attributes.value(i).toStdString().c_str());
                 residue->setSecstr(buf[0]);
             }
             if (attributes.localName(i) == "linkage_type")
             {
-                strcpy(buf, attributes.value(i).toStdString().c_str());
+                snprintf(buf, sizeof(buf), "%s", attributes.value(i).toStdString().c_str());
                 residue->set_linkage_type((short unsigned int)atoi( attributes.value(i).toStdString().c_str() ));
             }
             if (attributes.localName(i) == "confomer")
@@ -135,7 +135,7 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
             }
             if (attributes.localName(i) == "name1")
             {
-                strcpy(buf, attributes.value(i).toStdString().c_str());
+                snprintf(buf, sizeof(buf), "%s", attributes.value(i).toStdString().c_str());
                 residue->setName1(buf[0]);
             }
         }
@@ -179,7 +179,7 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
 
             if (attributes.localName(i) == "altloc")
             {
-                strcpy(buf, attributes.value(i).toStdString().c_str() );
+                snprintf(buf, sizeof(buf), "%s", attributes.value(i).toStdString().c_str());
                 atom->setAltloc(buf[0]);
             }
 
@@ -341,7 +341,7 @@ bool MoleculeXmlHandler::startElement(const QString &namespaceURI,
             }
             if (attributes.localName(i) == "label")
             {
-                strncpy(labelString, attributes.value(i).toStdString().c_str(), 128);
+                snprintf(labelString, sizeof(labelString), "%s", attributes.value(i).toStdString().c_str());
             }
             if (attributes.localName(i) == "red")
             {
@@ -673,12 +673,12 @@ bool MoleculeXmlHandler::endElement(const QString &namespaceURI, const QString &
 
     if ( name == "link_here" )
     {
-        strncpy(molecule->link_here, data.c_str(), MAXNAME);
+        snprintf(molecule->link_here, sizeof(molecule->link_here), "%s", data.c_str());
     }
 
     if ( name == "link_next" )
     {
-        strncpy(molecule->link_next, data.c_str(), MAXNAME);
+        snprintf(molecule->link_next, sizeof(molecule->link_next), "%s", data.c_str());
     }
 
     if ( name == "Bond" )

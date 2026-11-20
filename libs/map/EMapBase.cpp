@@ -4561,7 +4561,7 @@ int EMapBase::HydrateMap(int minlevel, int maxadd, int add_water, MIMoleculeBase
         atoms.reserve(num_atoms+maxadd);
         symatoms.reserve(num_symatoms);
     }
-    catch (bad_alloc)
+    catch (const bad_alloc &)
     {
         Logger::log("Not enough memory in HydrateMap");
         return 0;

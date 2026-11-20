@@ -1217,28 +1217,28 @@ bool mmCIF::SlurpTorsions(CifLoop &loop, map<std::string, TORSDICT> &torsion_map
 
         if (col == index.xRes)
         {
-            strncpy(torsion.restype, token.c_str(), MAXNAME);
+            strncpy(torsion.restype, token.c_str(), sizeof(torsion.restype) - 1);
         }
         else if (col == index.xAtom1)
         {
-            strncpy(torsion.name[0], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(torsion.name[0], token.c_str(), sizeof(torsion.name[0]) - 1);
         }
         else if (col == index.xAtom2)
         {
-            strncpy(torsion.name[1], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(torsion.name[1], token.c_str(), sizeof(torsion.name[1]) - 1);
         }
         else if (col == index.xAtom3)
         {
-            strncpy(torsion.name[2], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(torsion.name[2], token.c_str(), sizeof(torsion.name[2]) - 1);
         }
         else if (col == index.xAtom4)
         {
-            strncpy(torsion.name[3], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(torsion.name[3], token.c_str(), sizeof(torsion.name[3]) - 1);
         }
         else if (col == index.xName)
         {
             torsion_name = token;
-            strncpy(torsion.type, token.c_str(), 11);
+            strncpy(torsion.type, token.c_str(), sizeof(torsion.type) - 1);
             found_name = true;
         }
         else if (col == index.xAngle)
@@ -1419,15 +1419,15 @@ bool mmCIF::SlurpPlanes(CifLoop &loop,
                      && !atom_name.empty())
             {
                 plane.natoms = 1;
-                strncpy(plane.restype, res_name.c_str(), MAXNAME);
-                strncpy(plane.name[0], atom_name.c_str(), MAXNAME);
+                strncpy(plane.restype, res_name.c_str(), sizeof(plane.restype) - 1);
+                strncpy(plane.name[0], atom_name.c_str(), sizeof(plane.name[0]) - 1);
                 plane_map[plane_name] = plane;
             }
             else if (plane_map.find(plane_name) == plane_map.end()
                      && atom_name.empty())
             {
                 plane.natoms = 0;
-                strncpy(plane.restype, res_name.c_str(), MAXNAME);
+                strncpy(plane.restype, res_name.c_str(), sizeof(plane.restype) - 1);
                 plane_map[plane_name] = plane;
             }
             col = 0;
@@ -1490,8 +1490,8 @@ bool mmCIF::SlurpPlaneAtoms(CifLoop &loop,
             {
                 PLANEDICT plane;
                 plane.natoms = 1;
-                strncpy(plane.restype, res_name.c_str(), MAXNAME);
-                strncpy(plane.name[0], atom_name.c_str(), MAXNAME);
+                strncpy(plane.restype, res_name.c_str(), sizeof(plane.restype) - 1);
+                strncpy(plane.name[0], atom_name.c_str(), sizeof(plane.name[0]) - 1);
                 plane_map[plane_name] = plane;
             }
             else if (!res_name.empty()
@@ -1529,7 +1529,7 @@ bool mmCIF::SlurpChirals(CifLoop &loop, map<std::string, CHIRALDICT> &chiral_map
 
         if (col == index.xRes)
         {
-            strncpy(chiral.restype, token.c_str(), MAXNAME);
+            strncpy(chiral.restype, token.c_str(), sizeof(chiral.restype) - 1);
         }
         else if (col == index.xName)
         {
@@ -1537,19 +1537,19 @@ bool mmCIF::SlurpChirals(CifLoop &loop, map<std::string, CHIRALDICT> &chiral_map
         }
         else if (col == index.xCenter)
         {
-            strncpy(chiral.center, token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(chiral.center, token.c_str(), sizeof(chiral.center) - 1);
         }
         else if (col == index.xAtom1)
         {
-            strncpy(chiral.name[0], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(chiral.name[0], token.c_str(), sizeof(chiral.name[0]) - 1);
         }
         else if (col == index.xAtom2)
         {
-            strncpy(chiral.name[1], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(chiral.name[1], token.c_str(), sizeof(chiral.name[1]) - 1);
         }
         else if (col == index.xAtom3)
         {
-            strncpy(chiral.name[2], token.c_str(), chemlib::MAXATOMNAME);
+            strncpy(chiral.name[2], token.c_str(), sizeof(chiral.name[2]) - 1);
         }
         else if (col == index.xVolume)
         {

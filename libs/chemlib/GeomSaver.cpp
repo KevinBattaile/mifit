@@ -64,7 +64,7 @@ unsigned int GeomSaver::Save(const MIAtomList &atoms, MIMoleculeBase *model)
         Save->push_back(atoms[i]);
     }
     char buf[1024];
-    sprintf(buf, "%d atoms, Model: %s",
+    snprintf(buf, sizeof(buf), "%zu atoms, Model: %s",
             Save->size(), model->compound.c_str());
     SaveSets[token].Title = buf;
     return unique();

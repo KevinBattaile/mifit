@@ -259,7 +259,7 @@ void PrintResidueDebugInfo(Residue *res1)
     {
         printf("\tatom %d name %s pointer %p\n", i, res1->atom(i)->name(), res1->atom(i));
     }
-    printf("prefbonds size %d prefangles size %d\n", res1->prefBonds().size(), res1->prefAngles().size());
+    printf("prefbonds size %zu prefangles size %zu\n", res1->prefBonds().size(), res1->prefAngles().size());
     for (unsigned int i = 0; i < res1->prefBonds().size(); ++i)
     {
         printf("bond %d is between %p and %p\n",

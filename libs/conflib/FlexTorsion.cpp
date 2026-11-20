@@ -61,7 +61,7 @@ FlexTorsion::FlexTorsion(const FlexTorsion &rhs)
       _a4(rhs._a4),
       _dihedrals(rhs._dihedrals),
       _flex_atoms(rhs._flex_atoms),
-      _bond(_bond)
+      _bond(rhs._bond)
 {
     _dihedral_index = _dihedrals.begin();
 }

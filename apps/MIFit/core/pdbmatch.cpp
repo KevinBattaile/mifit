@@ -333,7 +333,7 @@ Residue *matchvec(const MIAtomList &CA, const MIAtomList &CB, std::string &pentd
     MIAtom *b1, *b2, *b3, *b4, *b5;
     char file[1024];
     hit top[MAXHITS];
-    char buf[1024];
+    char buf[1100];
     char seq[10];
     int found;
     int d1 = 0, d2 = 0, d3 = 0, d4 = 0, d5 = 0, d6 = 0;
@@ -608,7 +608,7 @@ Residue *matchvec(const MIAtomList &CA, const MIAtomList &CB, std::string &pentd
     /* for(i=0;i<MAXHITS;i++){ */
     for (i = MAXHITS-1; i >= 0; i--)
     {
-        sprintf(buf, "%3d: hit=%5d start=%5d end=%5d %c %s", i, top[i].sum, top[i].astart, top[i].aend, top[i].rchain, top[i].file);
+        snprintf(buf, sizeof(buf), "%3d: hit=%5d start=%5d end=%5d %c %s", i, top[i].sum, top[i].astart, top[i].aend, top[i].rchain, top[i].file);
         Logger::log("%s", buf);
     }
     sprintf(buf, "Found %d atoms", found);

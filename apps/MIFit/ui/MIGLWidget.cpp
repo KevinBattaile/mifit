@@ -333,7 +333,7 @@ static void SplitPath(const std::string &origPath,
     *ext = qfile.suffix().toStdString();
 }
 
-static bool checkmappath(char *file)
+static bool checkmappath(char *file, size_t fileSize)
 {
     if (!QFileInfo(file).exists())
     {
@@ -341,7 +341,7 @@ static bool checkmappath(char *file)
         std::string origPath = file;
         SplitPath(origPath, &path, &name, &ext);
         QFileInfo newFile(QDir::currentPath(), QString((ext.size() ? name + '.' + ext : name).c_str()));
-        sprintf(file, "%s", newFile.absoluteFilePath().toLatin1().constData());
+        snprintf(file, fileSize, "%s", newFile.absoluteFilePath().toLatin1().constData());
     }
     //check against new path if it was updated
     if (QFileInfo(file).exists())
@@ -362,8 +362,7 @@ static bool checkmappath(char *file)
                                           "", file, file_extension(file), filter_line.c_str(), MI_OPEN_MODE);
     if (s.size())
     {
-        strcpy(file, s.c_str());
-        return true;
+        snprintf(file, fileSize, "%s", s.c_str());
     }
     return false;
 }
@@ -9269,7 +9268,7 @@ void MIGLWidget::WriteStack(CArchive &ar)
         AtomStack->Pop(a, res, node);
         if (lastnode != node)
         {
-            sprintf(buf2, "molecule %s\n", node->pathname.c_str());
+            snprintf(buf2, sizeof(buf2), "molecule %s\n", node->pathname.c_str());
             ar.Write(buf2, strlen(buf2));
         }
         strncpy(aname, a->name(), chemlib::MAXATOMNAME);
@@ -9291,7 +9290,7 @@ void MIGLWidget::WriteStack(CArchive &ar)
                 rname[i] = '_';
             }
         }
-        sprintf(buf2, "atom %s %s %s %s %6.2f %6.2f\n", aname, rname, chainid.c_str(),
+        snprintf(buf2, sizeof(buf2), "atom %s %s %s %s %6.2f %6.2f\n", aname, rname, chainid.c_str(),
                 res->type().c_str(), (float)a->BValue(), (float)a->occ());
         ar.Write(buf2, strlen(buf2));
         lastnode = node;
@@ -11380,7 +11379,7 @@ bool MIGLWidget::OnOpenDocument(const std::string &path)
                         continue;
                     }
                     EMap *map = new EMap;
-                    if (checkmappath(fileBuf))
+                    if (checkmappath(fileBuf, sizeof(fileBuf)))
                     {
                         if (strncasecmp(buf, "loadmapphase", 12) == 0)
                         {
@@ -12038,9 +12037,9 @@ bool MIGLWidget::LoadMap(const char *buf, const char *pathname, const std::strin
             std::string strPath(pathname);
             SplitPath(origPath, &path, &name, &ext);
             QFileInfo newFile(QFileInfo(strPath.c_str()).path(), QString((ext.size() ? name + '.' + ext : name).c_str()));
-            sprintf(file, "%s", newFile.absoluteFilePath().toLatin1().constData());
+            snprintf(file, sizeof(file), "%s", newFile.absoluteFilePath().toLatin1().constData());
         }
-        if (checkmappath(file))
+        if (checkmappath(file, sizeof(file)))
         {
             map->SetMapNumber(nmap);
             //if(pathname) map->ReadCrystal(pathname);

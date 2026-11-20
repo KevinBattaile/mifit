@@ -363,7 +363,7 @@ namespace TNT
             memcpy(row_[M1], row_[M2], n_ * sizeof(T));
             memcpy(row_[M2], tmp, n_ * sizeof(T));
 
-            delete tmp;
+            delete[] tmp;
         }
 
         void SwapColumns(Subscript N1, Subscript N2)

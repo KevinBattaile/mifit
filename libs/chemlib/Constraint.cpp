@@ -123,8 +123,8 @@ void Plane::Clear()
 
 void Plane::Card(std::string &s)
 {
-    char buf[10];                                                       //Appends the string with the
-    sprintf(buf, " %d", atoms.size());                                  //number of atoms in the plane
+    char buf[32];                                                       //Appends the string with the
+    snprintf(buf, sizeof(buf), " %zu", atoms.size());                   //number of atoms in the plane
     s.append(buf);
 
     MIAtom_iter atm;                                        //Appends the string
@@ -427,8 +427,8 @@ void Improper::SetIndex(int impnumber)
 
 void Improper::Card(std::string &s)
 {
-    char buf[6];
-    sprintf(buf, "%d", _impnumber);
+    char buf[32];
+    snprintf(buf, sizeof(buf), "%d", _impnumber);
     s.append(buf);
 
     MIAtom_iter atm;
@@ -441,7 +441,7 @@ void Improper::Card(std::string &s)
     std::vector<double>::iterator ang;
     for (ang = _angles.begin(); ang != _angles.end(); ++ang)
     {
-        sprintf(buf, " %5.1f", *ang);
+        snprintf(buf, sizeof(buf), " %5.1f", *ang);
         s.append(buf);
     }
 }

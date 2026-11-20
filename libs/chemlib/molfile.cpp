@@ -278,7 +278,7 @@ bool molfile::Write(FILE *fp, MIMolInfo &mol)
         {
             return false;
         }
-        if (!fprintf(fp, "%3d%3d  0  0  %1d  0              1 V2000\n",
+        if (!fprintf(fp, "%3d%3zu  0  0  %1d  0              1 V2000\n",
                      mol.res->atomCount(), mol.bonds.size(), ischiral))
         {
             return false;

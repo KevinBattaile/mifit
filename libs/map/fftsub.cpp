@@ -860,6 +860,7 @@ void put_80(char *cptr, FILE *file)
     int len;
 
     strncpy(lineout, cptr, 80);
+    lineout[80] = '\0';
     len = strlen(lineout);
     printf(" header length is %d\n", len);
     while (((int)strlen(lineout)) < 80)
@@ -867,7 +868,7 @@ void put_80(char *cptr, FILE *file)
         strncat(lineout, "               ", 80-strlen(lineout));
     }
 
-    strncat(lineout, "\n", 1);
+    strcat(lineout, "\n");
     fwrite(lineout, 81, 1, file);
 }
 

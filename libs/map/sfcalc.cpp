@@ -747,12 +747,12 @@ int read_scattering_factors(char ***name, int **lname, char ***rname, double **a
     FILE *fp = fopen("ScatteringFactors", "r");
     int i, n = 0, nread;
     char file[1024];
-    char buf[1024];
+    char buf[1100];
     char string[200], rstring[200];
     float aa1, aa2, aa3, aa4, bb1, bb2, bb3, bb4, cc, zzeff, ffrano, ffiano;
     if (!fp)
     {
-        sprintf(file, "%s/ScatteringFactors", crystal_data_dir.c_str());
+        snprintf(file, sizeof(file), "%s/ScatteringFactors", crystal_data_dir.c_str());
         fp = fopen(file, "r");
     }
     else
@@ -761,7 +761,7 @@ int read_scattering_factors(char ***name, int **lname, char ***rname, double **a
     }
     if (!fp)
     {
-        sprintf(file, "%s/data/ScatteringFactors", molimage_home_dir.c_str());
+        snprintf(file, sizeof(file), "%s/data/ScatteringFactors", molimage_home_dir.c_str());
         fp = fopen(file, "r");
     }
     if (!fp)
@@ -770,7 +770,7 @@ int read_scattering_factors(char ***name, int **lname, char ***rname, double **a
 
         return 0;
     }
-    sprintf(buf, "Using scattering factors from %s", file);
+    snprintf(buf, sizeof(buf), "Using scattering factors from %s", file);
     Logger::log(buf);
     /* first get number of scattering factors */
     while (fgets(file, sizeof file, fp) != NULL)
