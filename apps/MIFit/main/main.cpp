@@ -2,8 +2,12 @@
 
 #include <iostream>
 #include <QApplication>
+#include <QDateTime>
+#include <QDir>
 #include <QTimer>
 #include <QSurfaceFormat>
+#include "ui/Logger.h"
+#include "core/Version.h"
 #include "ui/MIMainWindow.h"
 
 int main(int argc, char **argv)
@@ -18,6 +22,13 @@ int main(int argc, char **argv)
     format.setDepthBufferSize(24);
     QSurfaceFormat::setDefaultFormat(format);
     int result = -1;
+    // First thing written to mifit.log; file-only because the main window does not exist yet
+    Logger::logFileOnly("==================================================");
+    Logger::logFileOnly("MIFit %s starting  %s", MIFit_version,
+                        QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss").toStdString().c_str());
+    Logger::logFileOnly("Build: %s %s, Qt %s, cwd: %s", __DATE__, __TIME__, qVersion(),
+                        QDir::currentPath().toStdString().c_str());
+    Logger::logFileOnly("==================================================");
     Application app(argc, argv);
 #ifdef Q_OS_LINUX
     QApplication::setStyle("Plastique");

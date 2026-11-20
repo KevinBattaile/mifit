@@ -13,6 +13,8 @@ class Logger
 {
 public:
     static void log(const char *format, ...) MIFIT_PRINTF_ATTR(1, 2);
+    // Writes to mifit.log only; safe to call before the main window or QApplication exist.
+    static void logFileOnly(const char *format, ...) MIFIT_PRINTF_ATTR(1, 2);
     static void debug(const char *format, ...) MIFIT_PRINTF_ATTR(1, 2);
 
     static void message(const char *format, ...) MIFIT_PRINTF_ATTR(1, 2);

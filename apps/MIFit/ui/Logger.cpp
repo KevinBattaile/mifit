@@ -40,6 +40,15 @@ void Logger::log(const char *format, ...)
     MIMainWindowLog(s);
 }
 
+void Logger::logFileOnly(const char *format, ...)
+{
+    va_list argp;
+    va_start(argp, format);
+    std::string s = format_arg_list(format, argp);
+    va_end(argp);
+    writeToLogFile("LOG", s);
+}
+
 void Logger::message(const char *format, ...)
 {
     va_list argp;

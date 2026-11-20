@@ -425,6 +425,10 @@ int MIMolDictionary::AreBonded(const char *restype, MIAtom *atom1, MIAtom *atom2
         return 0;
     }
     p = DictMap.find(restype);
+    if (p == DictMap.end() && TryLoadFromMonomerLibrary(restype))
+    {
+        p = DictMap.find(restype);
+    }
     if (p != DictMap.end())
     {
         dbonds = p->second.Bonds();
@@ -494,6 +498,14 @@ int MIMolDictionary::FindGeom(Residue *reslist, int nres, Residue *ResActiveMode
 
     Clear();
     start = reslist;
+    {
+        // lazily load missing types up front: loading rebuilds DictMap
+        int cnt = 0;
+        for (Residue *r = reslist; r != NULL && cnt < nres; r = r->next(), ++cnt)
+        {
+            TryLoadFromMonomerLibrary(r->type());
+        }
+    }
     dict_map::iterator p;
     vector<Bond> *dbonds;
     vector<ANGLE> *dangles;
@@ -2138,6 +2150,7 @@ bool MIMolDictionary::LoadMonomerCif(const char *path, bool append, bool replace
         {
             tail = tail->insertResidue(e.res);
         }
+        monLibMisses.erase(e.res->type());
         e.res = NULL;
     }
 
@@ -2370,6 +2383,7 @@ int MIMolDictionary::LoadRes(Residue *respdb, bool append, bool replace_old, boo
     while (Monomer::isValid(newres))
     {
         to_add.push_back(newres->type());
+        monLibMisses.erase(newres->type());
         newres = newres->next();
     }
 
@@ -2720,6 +2734,7 @@ int MIMolDictionary::LoadDict(FILE *fp, bool append, bool replace_old)
     while (newres != NULL)
     {
         to_add.push_back(newres->type());
+        monLibMisses.erase(newres->type());
         newres = newres->next();
     }
 
@@ -3250,6 +3265,7 @@ Residue*MIMolDictionary::GetDictResidue(const char *type, int nconformer)
     {
         return NULL;
     }
+    TryLoadFromMonomerLibrary(type);
     dict_map::iterator p = GetDictEntry(type, nconformer);
     if (p == DictMap.end())
     {
@@ -3430,7 +3446,41 @@ bool MIMolDictionary::EmptyDictCheck()
 
 bool MIMolDictionary::DictContains(const std::string &res) const
 {
-    return DictMap.find(res.c_str()) != DictMap.end();
+    if (DictMap.find(res.c_str()) != DictMap.end())
+    {
+        return true;
+    }
+    return const_cast<MIMolDictionary*>(this)->TryLoadFromMonomerLibrary(res);
+}
+
+void MIMolDictionary::SetMonomerLibraryDir(const std::string &dir)
+{
+    if (dir != monomerLibraryDir)
+    {
+        monomerLibraryDir = dir;
+        monLibMisses.clear();
+    }
+}
+
+bool MIMolDictionary::TryLoadFromMonomerLibrary(const std::string &res_type)
+{
+    if (DictMap.find(res_type.c_str()) != DictMap.end())
+    {
+        return true;
+    }
+    if (monomerLibraryDir.empty() || res_type.empty() || monLibMisses.count(res_type))
+    {
+        return false;
+    }
+    std::string path = ResolveMonomerCifPath(monomerLibraryDir, res_type);
+    if (path.empty() || !LoadMonomerCif(path.c_str(), true, false)
+        || DictMap.find(res_type.c_str()) == DictMap.end())
+    {
+        monLibMisses.insert(res_type);
+        return false;
+    }
+    Logger::log("Loaded monomer %s from %s", res_type.c_str(), path.c_str());
+    return true;
 }
 
 bool MIMolDictionary::SaveDictionary(const char *pathname, const char *res_type)

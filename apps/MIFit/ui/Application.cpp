@@ -5,6 +5,7 @@
 
 #include <chemlib/chemlib.h>
 #include <chemlib/Monomer.h>
+#include <chemlib/GemmiMonLib.h>
 #include <conflib/conflib.h>
 #include <util/utillib.h>
 #include <core/corelib.h>
@@ -616,6 +617,7 @@ void Application::Write()
         settings.setValue("CRYSTALDATA", CrystalData.c_str());
     }
     settings.setValue("XFITDICT", XFitDictSetting.c_str());
+    settings.setValue("XFITMONLIBDIR", XFitMonLibDir.c_str());
     if (!HTMLBrowser.empty())
     {
         settings.setValue("HTMLBROWSER", HTMLBrowser.c_str());
@@ -646,6 +648,8 @@ void Application::Init()
     QSettings settings;
     if (settings.contains("XFITDICT"))
         XFitDictSetting = settings.value("XFITDICT").toString().toStdString();
+    if (settings.contains("XFITMONLIBDIR"))
+        XFitMonLibDir = settings.value("XFITMONLIBDIR").toString().toStdString();
     SetDictionary(XFitDictSetting);
     PentDir = MolimageHome;
 #ifndef _WIN32
@@ -736,6 +740,18 @@ void Application::LoadDictionary()
     geomrefiner->dict.LoadDefaultDictionary(
         Application::instance()->getDictionary().c_str(),
         Application::instance()->MolimageHome.c_str());
+    const std::string monlib = chemlib::FindMonomerLibrary(
+        Application::instance()->XFitMonLibDir,
+        Application::instance()->MolimageHome);
+    if (monlib.empty())
+    {
+        Logger::log("Monomer library: none found");
+    }
+    else
+    {
+        Logger::log("Monomer library: %s", monlib.c_str());
+    }
+    geomrefiner->dict.SetMonomerLibraryDir(monlib);
     MISetDictionary(&geomrefiner->dict);
 }
 

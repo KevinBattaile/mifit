@@ -5,6 +5,8 @@
 #include <vector>
 #include <list>
 #include <map>
+#include <string>
+#include <unordered_set>
 
 #include "MIAtom_fwd.h"
 #include "Residue_fwd.h"
@@ -64,6 +66,18 @@ namespace chemlib
         bool LoadMonomerCif(const char *path, bool append = false, bool replace = false);
         int LoadRes(Residue *respdb, bool append = false, bool replace_old = true,
                     bool rplc_backbone_tor = true);
+
+        // Monomer library (CCP4/Phenix) used for lazy per-residue lookup of
+        // types that are missing from the loaded dictionary
+        void SetMonomerLibraryDir(const std::string &dir);
+        const std::string &GetMonomerLibraryDir() const
+        {
+            return monomerLibraryDir;
+        }
+
+        // Loads res_type from the monomer library if it is not in the dictionary.
+        // Returns true if the residue type is in the dictionary afterwards.
+        bool TryLoadFromMonomerLibrary(const std::string &res_type);
         //	int LoadRes(RESIDUE *respdb, std::vector<ANGLE> &angles
 
         bool SaveDictionary(const char *pathname, const char *res_type = NULL);
@@ -258,6 +272,9 @@ namespace chemlib
         Residue *cres;
 
         dict_map DictMap;
+
+        std::string monomerLibraryDir;
+        std::unordered_set<std::string> monLibMisses; // codes known to be absent from the monomer library
 
         float sigmaangle;
         float sigmabond;

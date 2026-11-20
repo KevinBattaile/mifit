@@ -6,6 +6,7 @@
 #include <core/Version.h>
 #include <chemlib/chemlib.h>
 #include <chemlib/Residue.h>
+#include <chemlib/GemmiMonLib.h>
 #include <conflib/conflib.h>
 #include <jobs/jobslib.h>
 #include <util/utillib.h>
@@ -758,7 +759,7 @@ std::string MIMainWindow::OnLoadLigand(std::string wildcard, std::string filenam
     entry.torsions = mi.tordict;
     entry.planes = mi.planedict;
     entry.chirals = mi.chiralsdict;
-
+    const std::string fileType = entry.res->type();
 
     if (entry.res->atomCount() == 0)
     {
@@ -822,17 +823,69 @@ std::string MIMainWindow::OnLoadLigand(std::string wildcard, std::string filenam
         return "";
     }
 
-    LigPostProcessor lpp(entry, wildcard.c_str());
-    try
+    bool haveFileRestraints = false;
+    if (wildcard == std::string("*.cif") && filename.size() > 0 && IsMonomerCifFile(filename))
     {
-        lpp.Process();
+        // A monomer .cif that carries its own restraints: keep them instead of
+        // regenerating the dictionary from coordinates.
+        GemmiMonLibResult loaded;
+        if (chemlib::LoadMonomerCif(filename, loaded))
+        {
+            GemmiMonLibEntry *src = NULL;
+            for (size_t i = 0; i < loaded.entries.size() && src == NULL; ++i)
+            {
+                if (loaded.entries[i].res->type() == fileType)
+                {
+                    src = &loaded.entries[i];
+                }
+            }
+            if (src == NULL)
+            {
+                src = &loaded.entries[0];
+            }
+            if (!src->bonds.empty() && src->hasCoordinates)
+            {
+                src->res->setType(entry.res->type());
+                src->res->setName(entry.res->name());
+                delete entry.res;
+                entry.res = src->res;
+                src->res = NULL;
+                entry.bonds = src->bonds;
+                entry.angles = src->angles;
+                entry.torsions = src->torsions;
+                entry.planes = src->planes;
+                entry.chirals = src->chirals;
+                for (size_t i = 0; i < entry.torsions.size(); ++i)
+                {
+                    strncpy(entry.torsions[i].restype, entry.res->type().c_str(), sizeof(entry.torsions[i].restype) - 1);
+                }
+                for (size_t i = 0; i < entry.planes.size(); ++i)
+                {
+                    strncpy(entry.planes[i].restype, entry.res->type().c_str(), sizeof(entry.planes[i].restype) - 1);
+                }
+                for (size_t i = 0; i < entry.chirals.size(); ++i)
+                {
+                    strncpy(entry.chirals[i].restype, entry.res->type().c_str(), sizeof(entry.chirals[i].restype) - 1);
+                }
+                haveFileRestraints = true;
+            }
+        }
     }
-    catch (const char *ex)
+
+    if (!haveFileRestraints)
     {
-        std::string message("Unable to load ligand.\n");
-        message += ex;
-        QMessageBox::critical(this, "Unable to load ligand.", message.c_str());
-        return "";
+        LigPostProcessor lpp(entry, wildcard.c_str());
+        try
+        {
+            lpp.Process();
+        }
+        catch (const char *ex)
+        {
+            std::string message("Unable to load ligand.\n");
+            message += ex;
+            QMessageBox::critical(this, "Unable to load ligand.", message.c_str());
+            return "";
+        }
     }
     entry.res->setPrefBonds(entry.bonds);
     entry.res->setPrefAngles(entry.angles);

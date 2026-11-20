@@ -12103,6 +12103,7 @@ bool MIGLWidget::LoadMap(const char *buf, const char *pathname, const std::strin
     {
         return false;
     }
+    Logger::log("Loaded map %d from %s", nmap, file);
     return true;
 }
 

@@ -45,6 +45,7 @@ class Application : public QApplication
     std::string SmilesDbCommand;
     std::string XFitDict;
     std::string XFitDictSetting;
+    std::string XFitMonLibDir; // optional monomer library directory (empty = auto-detect)
     std::string appname;
     std::string checkpointDirectory;
     std::string userSettingsDir;

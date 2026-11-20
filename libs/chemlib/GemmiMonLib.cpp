@@ -15,7 +15,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstring>
-#include <exception>
+#include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <limits>
 #include <map>
@@ -536,6 +537,146 @@ bool IsMonomerCifFile(const std::string &path)
     in.read(&buf[0], static_cast<std::streamsize>(buf.size()));
     buf.resize(static_cast<size_t>(in.gcount()));
     return buf.find("_chem_comp_atom.") != std::string::npos;
+}
+
+namespace
+{
+
+bool isDir(const std::filesystem::path &p)
+{
+    std::error_code ec;
+    return std::filesystem::is_directory(p, ec);
+}
+
+bool isFile(const std::filesystem::path &p)
+{
+    std::error_code ec;
+    return std::filesystem::is_regular_file(p, ec);
+}
+
+bool looksLikeMonomerLibrary(const std::filesystem::path &dir)
+{
+    return isDir(dir)
+           && (isFile(dir / "list" / "mon_lib_list.cif")
+               || isFile(dir / "list" / "geostd_list.cif")
+               || isFile(dir / "a" / "ALA.cif")
+               || isFile(dir / "a" / "data_ALA.cif"));
+}
+
+const char *envOrNull(const char *name)
+{
+    const char *v = getenv(name);
+    return (v != NULL && v[0] != '\0') ? v : NULL;
+}
+
+} // anonymous namespace
+
+std::string FindMonomerLibrary(const std::string &pref_dir, const std::string &molimage_home)
+{
+    namespace fs = std::filesystem;
+    std::vector<fs::path> candidates;
+    if (!pref_dir.empty())
+    {
+        candidates.push_back(pref_dir);
+    }
+    if (const char *v = envOrNull("CLIBD_MON"))
+    {
+        candidates.push_back(v);
+    }
+    if (const char *v = envOrNull("CCP4"))
+    {
+        candidates.push_back(fs::path(v) / "lib" / "data" / "monomers");
+    }
+    if (const char *v = envOrNull("MMTBX_CCP4_MONOMER_LIB"))
+    {
+        candidates.push_back(v);
+    }
+    if (const char *v = envOrNull("PHENIX"))
+    {
+        fs::path phenix(v);
+        std::error_code ec;
+        fs::path libdir = phenix / "lib";
+        if (fs::is_directory(libdir, ec))
+        {
+            std::vector<fs::path> pydirs;
+            for (fs::directory_iterator it(libdir, ec), end; !ec && it != end; it.increment(ec))
+            {
+                if (it->path().filename().string().compare(0, 6, "python") == 0)
+                {
+                    pydirs.push_back(it->path());
+                }
+            }
+            std::sort(pydirs.begin(), pydirs.end());
+            for (size_t i = 0; i < pydirs.size(); ++i)
+            {
+                candidates.push_back(pydirs[i] / "site-packages" / "chem_data" / "mon_lib");
+                candidates.push_back(pydirs[i] / "site-packages" / "chem_data" / "geostd");
+            }
+        }
+        candidates.push_back(phenix / "modules" / "chem_data" / "mon_lib");
+        candidates.push_back(phenix / "modules" / "chem_data" / "geostd");
+        candidates.push_back(phenix / "chem_data" / "mon_lib");
+        candidates.push_back(phenix / "chem_data" / "geostd");
+    }
+    if (!molimage_home.empty())
+    {
+        candidates.push_back(fs::path(molimage_home) / "data" / "monomers");
+    }
+
+    for (size_t i = 0; i < candidates.size(); ++i)
+    {
+        if (looksLikeMonomerLibrary(candidates[i]))
+        {
+            return candidates[i].string();
+        }
+    }
+    return std::string();
+}
+
+std::string ResolveMonomerCifPath(const std::string &monlib_dir, const std::string &code)
+{
+    namespace fs = std::filesystem;
+    if (monlib_dir.empty() || code.empty()
+        || code.find_first_of("/\\") != std::string::npos || code.find("..") != std::string::npos)
+    {
+        return std::string();
+    }
+    std::string upper = code;
+    for (size_t i = 0; i < upper.size(); ++i)
+    {
+        upper[i] = (char)toupper((unsigned char)upper[i]);
+    }
+    const std::string subdir(1, (char)tolower((unsigned char)upper[0]));
+
+    // Names reserved by Windows are stored as CODE_CODE.cif in the CCP4 layout
+    bool reserved = upper == "CON" || upper == "PRN" || upper == "AUX" || upper == "NUL";
+    if (upper.size() == 4 && (upper.compare(0, 3, "COM") == 0 || upper.compare(0, 3, "LPT") == 0)
+        && upper[3] >= '1' && upper[3] <= '9')
+    {
+        reserved = true;
+    }
+
+    std::vector<std::string> names;
+    if (reserved)
+    {
+        names.push_back(upper + "_" + upper);
+    }
+    names.push_back(upper);
+    names.push_back("data_" + upper);
+
+    fs::path base(monlib_dir);
+    for (size_t i = 0; i < names.size(); ++i)
+    {
+        for (int gz = 0; gz < 2; ++gz)
+        {
+            fs::path p = base / subdir / (names[i] + (gz ? ".cif.gz" : ".cif"));
+            if (isFile(p))
+            {
+                return p.string();
+            }
+        }
+    }
+    return std::string();
 }
 
 } // namespace chemlib

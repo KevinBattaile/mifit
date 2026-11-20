@@ -65,6 +65,21 @@ bool LoadMonomerCif(const std::string &path, GemmiMonLibResult &out);
  */
 bool IsMonomerCifFile(const std::string &path);
 
+/**
+ * Finds a monomer library directory: preference dir, $CLIBD_MON,
+ * $CCP4/lib/data/monomers, $MMTBX_CCP4_MONOMER_LIB, Phenix chem_data
+ * (mon_lib / geostd), then molimage_home/data/monomers.
+ * Returns an empty string if none is found.
+ */
+std::string FindMonomerLibrary(const std::string &pref_dir, const std::string &molimage_home);
+
+/**
+ * Returns the path of the monomer file for a code in a CCP4 (<x>/CODE.cif) or
+ * Phenix geostd (<x>/data_CODE.cif) library, optionally gzipped, or an empty
+ * string if no such file exists.
+ */
+std::string ResolveMonomerCifPath(const std::string &monlib_dir, const std::string &code);
+
 } // namespace chemlib
 
 #endif // chemlib_GemmiMonLib_h
