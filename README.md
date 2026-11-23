@@ -5,8 +5,8 @@ MIFit has the following features:
   * Easy to navigate and manipulate multiple structures and maps.
   * Improvements in graphics rendering performance.
   * Customizable jobs menu for interfacing with MIExpert or your own scripts and automated systems.
-  * Developed with Qt 4.7 (http://qt.nokia.com).
-  * Cross platform – supports Windows and Linux.  Building on MacOS should be possible.
+  * Developed with Qt 6 (http://www.qt.io).
+  * Cross platform – supports Linux and MacOS.  Building on Windows should be possible.
 
 ![Screenshot](https://raw.githubusercontent.com/mifit/wiki/master/images/image95.png)
 
