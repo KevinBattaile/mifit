@@ -6,6 +6,7 @@
 #include <QMessageBox>
 #include <QSettings>
 #include "ui/Application.h"
+#include "ui/MIMainWindow.h"
 #include "BatchJob.h"
 #include "BatchJobManager.h"
 #include "core/corelib.h"
@@ -237,6 +238,38 @@ void BatchJobManager::setupJobMenu(QMenu *menu)
 {
     QSettings settings;
     _customJobIndex = settings.beginReadArray("customJobs");
+    if (_customJobIndex == 0)
+    {
+        settings.endArray();
+        const QString setupScript = QString::fromStdString(Application::instance()->GetMolimageHome())
+                                    + "/miexpert/setupJobMenu.py";
+        const QString python = pythonExe();
+        if (QFile::exists(setupScript) && !python.isEmpty())
+        {
+            BatchJob *setupJob = CreateJob();
+            setupJob->setJobName("Setup Job Menu");
+            setupJob->setProgram(python);
+            setupJob->setArguments(setupScript);
+            setupJob->StartJob();
+        }
+        return;
+    }
+    if (_customJobIndex == 0)
+    {
+        settings.endArray();
+        const QString setupScript = QString::fromStdString(Application::instance()->GetMolimageHome())
+                                    + "/miexpert/setupJobMenu.py";
+        const QString python = pythonExe();
+        if (QFile::exists(setupScript) && !python.isEmpty())
+        {
+            BatchJob *setupJob = CreateJob();
+            setupJob->setJobName("Setup Job Menu");
+            setupJob->setProgram(python);
+            setupJob->setArguments(setupScript);
+            setupJob->StartJob();
+        }
+        return;
+    }
     for (int i = 0; i < static_cast<int>(_customJobIndex); ++i)
     {
         settings.setArrayIndex(i);

@@ -1,0 +1,15 @@
+name: mifit
+channels:
+  - conda-forge
+dependencies:
+  - python>=3.11
+  - qt6-main
+  - pyqt
+  - gemmi>=0.7.5
+  - libboost-headers
+  - cmake>=3.20
+  - ninja
+  - cxx-compiler
+  - c-compiler
+  - libgl-devel
+  - libglu

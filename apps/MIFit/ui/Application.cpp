@@ -900,14 +900,31 @@ void Application::SetMolimageHome(bool reset)
 {
     if (reset || MolimageHome.empty())
     {
-        MolimageHome = findMIFitBin();
-        if (strncasecmp(MolimageHome.c_str(), "/bin", 4) == 0
-            || strncasecmp(MolimageHome.c_str(), "\\bin", 4) == 0)
+        const QByteArray envHome = qgetenv("MIFIT_HOME");
+        if (!envHome.isEmpty() && QFileInfo::exists(QString::fromLocal8Bit(envHome)))
         {
-            MolimageHome.erase(MolimageHome.size()-4);
+            MolimageHome = QString::fromLocal8Bit(envHome).toStdString();
+            return;
+        }
+        MolimageHome = findMIFitBin();
+        if (MolimageHome.size() >= 4)
+        {
+            const std::string tail = MolimageHome.substr(MolimageHome.size() - 4);
+            if (strcasecmp(tail.c_str(), "/bin") == 0
+                || strcasecmp(tail.c_str(), "\\bin") == 0)
+            {
+                MolimageHome.erase(MolimageHome.size() - 4);
+            }
         }
 #ifdef __APPLE__
         MolimageHome += "/../Resources";
+#else
+        const QString shareDir = QString::fromStdString(MolimageHome) + "/share/MIFit";
+        if (!QFileInfo::exists(QString::fromStdString(MolimageHome) + "/data")
+            && QFileInfo::exists(shareDir + "/data"))
+        {
+            MolimageHome = shareDir.toStdString();
+        }
 #endif
     }
 }

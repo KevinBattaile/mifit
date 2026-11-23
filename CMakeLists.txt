@@ -1,6 +1,13 @@
 cmake_minimum_required(VERSION 3.16)
 project(MIFit VERSION 2010.10 LANGUAGES C CXX)
 
+if(DEFINED ENV{CONDA_PREFIX} AND EXISTS "$ENV{CONDA_PREFIX}")
+    list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
+    if(EXISTS "$ENV{CONDA_PREFIX}/include")
+        include_directories(SYSTEM "$ENV{CONDA_PREFIX}/include")
+    endif()
+endif()
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -10,6 +17,7 @@ set(CMAKE_AUTORCC ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets OpenGL OpenGLWidgets Network Core5Compat QuickWidgets PrintSupport)
 find_package(OpenGL REQUIRED)
+find_package(Boost REQUIRED)
 
 find_package(gemmi CONFIG QUIET)
 if(NOT gemmi_FOUND)
@@ -684,14 +692,56 @@ target_link_libraries(MIFit PRIVATE
     Qt6::PrintSupport
 )
 
+set(MIEXPERT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../miexpert" CACHE PATH "Path to optional miexpert Python scripts")
+
 if(UNIX AND NOT APPLE)
   set_target_properties(MIFit PROPERTIES
-      INSTALL_RPATH "$ORIGIN;$ORIGIN/lib;$ORIGIN/libs"
+      OUTPUT_NAME "MIFit.bin"
+      INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib;$ORIGIN/lib;$ORIGIN/libs"
+      INSTALL_RPATH_USE_LINK_PATH ON
   )
 endif()
 
-# Installation rules
 install(TARGETS MIFit DESTINATION bin)
 install(DIRECTORY data/ DESTINATION share/MIFit/data)
 install(DIRECTORY examples/ DESTINATION share/MIFit/examples)
 install(FILES README.txt license.txt DESTINATION share/MIFit)
+
+if(EXISTS "${MIEXPERT_DIR}/setupJobMenu.py")
+  install(DIRECTORY "${MIEXPERT_DIR}/"
+          DESTINATION share/MIFit/miexpert
+          PATTERN ".git*" EXCLUDE
+          PATTERN "__pycache__" EXCLUDE
+          PATTERN "*.pyc" EXCLUDE
+          PATTERN "tests" EXCLUDE)
+endif()
+
+if(UNIX AND NOT APPLE)
+  set(_BUILD_CONDA_PREFIX "$ENV{CONDA_PREFIX}")
+  if(NOT _BUILD_CONDA_PREFIX)
+    get_filename_component(_PY_BIN_DIR "${Python3_EXECUTABLE}" DIRECTORY)
+    get_filename_component(_BUILD_CONDA_PREFIX "${_PY_BIN_DIR}" DIRECTORY)
+  endif()
+
+  file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/mifit.launcher.in"
+"#!/usr/bin/env bash
+set -euo pipefail
+SELF_DIR=\"$(cd \"$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+PREFIX_DIR=\"$(cd \"\${SELF_DIR}/..\" && pwd)\"
+export MIFIT_HOME=\"\${PREFIX_DIR}/share/MIFit\"
+if [ -n \"@_BUILD_CONDA_PREFIX@\" ] && [ -d \"@_BUILD_CONDA_PREFIX@/bin\" ]; then
+    export CONDA_PREFIX=\"@_BUILD_CONDA_PREFIX@\"
+    case \":\${PATH}:\" in
+        *\":@_BUILD_CONDA_PREFIX@/bin:\"*) ;;
+        *) export PATH=\"@_BUILD_CONDA_PREFIX@/bin:\${PATH}\" ;;
+    esac
+fi
+exec \"\${SELF_DIR}/MIFit.bin\" \"$@\"
+")
+  configure_file(
+      "${CMAKE_CURRENT_BINARY_DIR}/mifit.launcher.in"
+      "${CMAKE_CURRENT_BINARY_DIR}/mifit"
+      @ONLY
+  )
+  install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/mifit" DESTINATION bin)
+endif()
