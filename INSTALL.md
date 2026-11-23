@@ -8,8 +8,9 @@ conda env create -f environment.yml
 # macOS:
 conda env create -f environment-macos.yml
 conda activate mifit
-*(Optional: clone `miexpert` alongside `mifit` at `../miexpert`, or pass `-DMIEXPERT_DIR=/path/to/miexpert` to CMake. If omitted, MIFit installs cleanly without the `miexpert` job scripts.)*
 ```
+*(Optional: clone `miexpert` alongside `mifit` at `../miexpert`, or pass `-DMIEXPERT_DIR=/path/to/miexpert` to CMake. If omitted, MIFit installs cleanly without the `miexpert` job scripts.)*
+
 ## 2. Configure, Build, and Install
 
 ```bash
