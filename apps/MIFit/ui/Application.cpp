@@ -917,15 +917,19 @@ void Application::SetMolimageHome(bool reset)
             }
         }
 #ifdef __APPLE__
-        MolimageHome += "/../Resources";
-#else
+        const QString macResources = QString::fromStdString(MolimageHome) + "/../Resources";
+        if (QFileInfo::exists(macResources + "/data"))
+        {
+            MolimageHome = macResources.toStdString();
+            return;
+        }
+#endif
         const QString shareDir = QString::fromStdString(MolimageHome) + "/share/MIFit";
         if (!QFileInfo::exists(QString::fromStdString(MolimageHome) + "/data")
             && QFileInfo::exists(shareDir + "/data"))
         {
             MolimageHome = shareDir.toStdString();
         }
-#endif
     }
 }
 

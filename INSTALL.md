@@ -3,7 +3,10 @@
 ## 1. Create the Conda Environment
 
 ```bash
+# Linux:
 conda env create -f environment.yml
+# macOS:
+conda env create -f environment-macos.yml
 conda activate mifit
 *(Optional: clone `miexpert` alongside `mifit` at `../miexpert`, or pass `-DMIEXPERT_DIR=/path/to/miexpert` to CMake. If omitted, MIFit installs cleanly without the `miexpert` job scripts.)*
 

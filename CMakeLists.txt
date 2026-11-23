@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.16)
 project(MIFit VERSION 2010.10 LANGUAGES C CXX)
 
+if(APPLE)
+    add_compile_definitions(GL_SILENCE_DEPRECATION)
+endif()
+
 if(DEFINED ENV{CONDA_PREFIX} AND EXISTS "$ENV{CONDA_PREFIX}")
     list(PREPEND CMAKE_PREFIX_PATH "$ENV{CONDA_PREFIX}")
     if(EXISTS "$ENV{CONDA_PREFIX}/include")
@@ -694,10 +698,16 @@ target_link_libraries(MIFit PRIVATE
 
 set(MIEXPERT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../miexpert" CACHE PATH "Path to optional miexpert Python scripts")
 
-if(UNIX AND NOT APPLE)
+if(UNIX)
+  if(APPLE)
+    set(_MIFIT_INSTALL_RPATH "@loader_path;@loader_path/../lib;@loader_path/lib;@loader_path/libs")
+  else()
+    set(_MIFIT_INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib;$ORIGIN/lib;$ORIGIN/libs")
+  endif()
   set_target_properties(MIFit PROPERTIES
       OUTPUT_NAME "MIFit.bin"
-      INSTALL_RPATH "$ORIGIN;$ORIGIN/../lib;$ORIGIN/lib;$ORIGIN/libs"
+      MACOSX_RPATH ON
+      INSTALL_RPATH "${_MIFIT_INSTALL_RPATH}"
       INSTALL_RPATH_USE_LINK_PATH ON
   )
 endif()
@@ -716,7 +726,7 @@ if(EXISTS "${MIEXPERT_DIR}/setupJobMenu.py")
           PATTERN "tests" EXCLUDE)
 endif()
 
-if(UNIX AND NOT APPLE)
+if(UNIX)
   set(_BUILD_CONDA_PREFIX "$ENV{CONDA_PREFIX}")
   if(NOT _BUILD_CONDA_PREFIX)
     get_filename_component(_PY_BIN_DIR "${Python3_EXECUTABLE}" DIRECTORY)
