@@ -4,7 +4,7 @@ channels:
 dependencies:
   - python>=3.11
   - qt6-main
-  - pyqt
+  - pyqt6
   - gemmi>=0.7.5
   - libboost-headers
   - cmake>=3.20
