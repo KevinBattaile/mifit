@@ -222,7 +222,11 @@ QAction *BatchJobManager::customJobAction(const QString &menuName, const QString
     QSettings settings;
     settings.beginWriteArray("customJobs");
     settings.setArrayIndex(_customJobIndex);
-    settings.setValue("job", QVariant::fromValue(customJob));
+    settings.setValue("menuName", customJob.menuName);
+    settings.setValue("jobName", customJob.jobName);
+    settings.setValue("executable", customJob.executable);
+    settings.setValue("arguments", customJob.arguments);
+    settings.setValue("workingDirectory", customJob.workingDirectory);
     ++_customJobIndex;
     settings.endArray();
 
@@ -236,7 +240,13 @@ void BatchJobManager::setupJobMenu(QMenu *menu)
     for (int i = 0; i < static_cast<int>(_customJobIndex); ++i)
     {
         settings.setArrayIndex(i);
-        CustomJob job = settings.value("job").value<CustomJob>();
+        CustomJob job(settings.value("menuName").toString(),
+                      settings.value("jobName").toString(),
+                      settings.value("executable").toString(),
+                      settings.value("arguments").toStringList(),
+                      settings.value("workingDirectory").toString());
+        if (job.menuName.isEmpty())
+            continue;
         QAction *jobAction = new QAction(job.menuName, this);
         jobAction->setData(QVariant::fromValue(job));
         connect(jobAction, SIGNAL(triggered()), this, SLOT(handleCustomJobAction()));
@@ -258,7 +268,12 @@ void BatchJobManager::saveJobMenu(QMenu *menu)
             continue;
 
         settings.setArrayIndex(index);
-        settings.setValue("job", action->data());
+        CustomJob job = action->data().value<CustomJob>();
+        settings.setValue("menuName", job.menuName);
+        settings.setValue("jobName", job.jobName);
+        settings.setValue("executable", job.executable);
+        settings.setValue("arguments", job.arguments);
+        settings.setValue("workingDirectory", job.workingDirectory);
         ++index;
     }
     settings.endArray();
