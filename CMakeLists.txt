@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(MIFit VERSION 2010.10 LANGUAGES C CXX)
+project(MIFit VERSION 2026.11 LANGUAGES C CXX)
 
 if(APPLE)
     add_compile_definitions(GL_SILENCE_DEPRECATION)

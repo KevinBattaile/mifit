@@ -12,6 +12,13 @@ MIFit has the following features:
 
 ## News
 
+### November 2026
+
+Modernized release (v2026.11): ported MIFit to Qt 6 and CMake/Ninja, added gemmi-back mmCIF support,
+resored the local-socket scripting IPC server, added Conda/RPATH zero-activation deployment and
+added native MacOS Apple Silicon support. Pair with the matching v2026.11 release of MIExpert (ported
+to Python 3 and PyQt6).
+
 ### March 2015
 
 Project moved to GitHub because Google Code is shutting down.
