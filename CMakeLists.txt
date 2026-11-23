@@ -736,7 +736,13 @@ if(UNIX)
   file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/mifit.launcher.in"
 "#!/usr/bin/env bash
 set -euo pipefail
-SELF_DIR=\"$(cd \"$(dirname \"\${BASH_SOURCE[0]}\")\" && pwd)\"
+SOURCE=\"\${BASH_SOURCE[0]}\"
+while [ -L \"\${SOURCE}\" ]; do
+    DIR=\"$(cd -P \"$(dirname \"\${SOURCE}\")\" && pwd)\"
+    SOURCE=\"$(readlink \"\${SOURCE}\")\"
+    [[ \"\${SOURCE}\" != /* ]] && SOURCE=\"\${DIR}/\${SOURCE}\"
+done
+SELF_DIR=\"$(cd -P \"$(dirname \"\${SOURCE}\")\" && pwd)\"
 PREFIX_DIR=\"$(cd \"\${SELF_DIR}/..\" && pwd)\"
 export MIFIT_HOME=\"\${PREFIX_DIR}/share/MIFit\"
 if [ -n \"@_BUILD_CONDA_PREFIX@\" ] && [ -d \"@_BUILD_CONDA_PREFIX@/bin\" ]; then
@@ -746,6 +752,7 @@ if [ -n \"@_BUILD_CONDA_PREFIX@\" ] && [ -d \"@_BUILD_CONDA_PREFIX@/bin\" ]; the
         *) export PATH=\"@_BUILD_CONDA_PREFIX@/bin:\${PATH}\" ;;
     esac
 fi
+
 exec \"\${SELF_DIR}/MIFit.bin\" \"$@\"
 ")
   configure_file(
