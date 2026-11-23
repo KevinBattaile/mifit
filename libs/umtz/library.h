@@ -531,6 +531,14 @@ struct Str_Desc
 #endif
 #endif
 
+#if !defined(NATIVEFT) && (defined(__arm64__) || defined(__aarch64__) || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__))
+#  define NATIVEFT DFNTF_LEIEEE
+#  define NATIVEIT DFNTI_IBO
+#elif !defined(NATIVEFT) && defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+#  define NATIVEFT DFNTF_BEIEEE
+#  define NATIVEIT DFNTI_MBO
+#endif
+
 #ifndef NATIVEFT
 #  error "Can't determine machine number format"
 #endif

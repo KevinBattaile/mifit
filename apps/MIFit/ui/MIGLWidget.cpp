@@ -1,5 +1,9 @@
 #include <QDebug>
+#ifdef __APPLE__
+#include <OpenGL/gl.h>
+#else
 #include <GL/gl.h>
+#endif
 #include <QActionGroup>
 #include <QQmlEngine>
 #include <QQmlContext>
